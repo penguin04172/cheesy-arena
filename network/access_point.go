@@ -165,8 +165,8 @@ func (ap *AccessPoint) configureTeams(teams [6]*model.Team) {
 			teamIndex++
 		}
 
-		_, _ = ap.runCommand("uci commit wireless")
-		_, _ = ap.runCommand("wifi reload")
+		_, _ = ap.runCommand("uci commit wireless\n")
+		_, _ = ap.runCommand("wifi reload\n")
 		if !ap.isVividType {
 			// The Linksys AP returns immediately after 'wifi reload' but may not have applied the configuration yet;
 			// sleep for a bit to compensate. (The Vivid AP waits for the configuration to be applied before returning.)
@@ -322,7 +322,7 @@ func (ap *AccessPoint) decodeWifiInfo(wifiInfo string) error {
 
 	for i, wifiStatus := range ap.TeamWifiStatuses {
 		if wifiStatus != nil {
-			ssid := ssids[i][1]
+			ssid := ssids[i+1][1]
 			wifiStatus.TeamId, _ = strconv.Atoi(ssid) // Any non-numeric SSIDs will be represented by a zero.
 		}
 	}
