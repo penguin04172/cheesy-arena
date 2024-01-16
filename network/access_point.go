@@ -110,7 +110,7 @@ func (ap *AccessPoint) ConfigureAdminSettings() error {
 	if ap.isVividType {
 		device = "wifi1"
 	} else {
-		device = "radio0"
+		device = "radio1"
 	}
 	command := fmt.Sprintf("uci set wireless.%s.channel=%d && uci commit wireless", device, ap.teamChannel)
 	_, err := ap.runCommand(command)
