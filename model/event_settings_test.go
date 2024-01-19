@@ -4,8 +4,9 @@
 package model
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestEventSettingsReadWrite(t *testing.T) {
@@ -17,23 +18,24 @@ func TestEventSettingsReadWrite(t *testing.T) {
 	assert.Equal(
 		t,
 		EventSettings{
-			Id:                          1,
-			Name:                        "Untitled Event",
-			PlayoffType:                 DoubleEliminationPlayoff,
-			NumPlayoffAlliances:         8,
-			SelectionRound2Order:        "L",
-			SelectionRound3Order:        "",
-			TbaDownloadEnabled:          true,
-			ApType:                      "linksys",
-			ApTeamChannel:               157,
-			WarmupDurationSec:           0,
-			AutoDurationSec:             15,
-			PauseDurationSec:            3,
-			TeleopDurationSec:           135,
-			WarningRemainingDurationSec: 30,
-			SustainabilityBonusLinkThresholdWithoutCoop: 6,
-			SustainabilityBonusLinkThresholdWithCoop:    5,
-			ActivationBonusPointThreshold:               26,
+			Id:                                 1,
+			Name:                               "Untitled Event",
+			PlayoffType:                        DoubleEliminationPlayoff,
+			NumPlayoffAlliances:                8,
+			SelectionRound2Order:               "L",
+			SelectionRound3Order:               "",
+			TbaDownloadEnabled:                 true,
+			ApType:                             "linksys",
+			ApTeamChannel:                      157,
+			WarmupDurationSec:                  0,
+			AutoDurationSec:                    15,
+			PauseDurationSec:                   3,
+			TeleopDurationSec:                  135,
+			WarningRemainingDurationSec:        30,
+			MelodyBonusThresholdWithoutCoop:    18,
+			MelodyBonusThresholdWithCoop:       15,
+			EnsembleBonusPointThreshold:        10,
+			EnsembleBonusOnstageRobotThreshold: 2,
 		},
 		*eventSettings,
 	)

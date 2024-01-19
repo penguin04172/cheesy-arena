@@ -4,9 +4,10 @@
 package model
 
 import (
+	"testing"
+
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestGetNonexistentMatchResult(t *testing.T) {
@@ -29,7 +30,7 @@ func TestMatchResultCrud(t *testing.T) {
 	assert.Equal(t, matchResult, matchResult2)
 
 	matchResult.BlueScore.EndgameStatuses =
-		[3]game.EndgameStatus{game.EndgameParked, game.EndgameNone, game.EndgameDocked}
+		[3]game.EndgameStatus{game.EndgameParked, game.EndgameNone, game.EndgameOnstage}
 	assert.Nil(t, db.UpdateMatchResult(matchResult))
 	matchResult2, err = db.GetMatchResultForMatch(254)
 	assert.Nil(t, err)

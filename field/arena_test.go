@@ -4,6 +4,12 @@
 package field
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/Team254/cheesy-arena/partner"
@@ -11,11 +17,6 @@ import (
 	"github.com/Team254/cheesy-arena/tournament"
 	"github.com/Team254/cheesy-arena/websocket"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
-	"time"
 )
 
 func TestAssignTeam(t *testing.T) {
@@ -918,8 +919,6 @@ func TestPlcMatchCycleGameSpecific(t *testing.T) {
 	arena.Update()
 	assert.Equal(t, AutoPeriod, arena.MatchState)
 	assert.Equal(t, [2]bool{true, true}, plc.chargeStationLights)
-	assert.Equal(t, false, arena.RedRealtimeScore.CurrentScore.AutoChargeStationLevel)
-	assert.Equal(t, false, arena.BlueRealtimeScore.CurrentScore.AutoChargeStationLevel)
 
 	// Move the charge stations around during auto and the pause.
 	plc.chargeStationsLevel[0] = false
@@ -935,28 +934,20 @@ func TestPlcMatchCycleGameSpecific(t *testing.T) {
 		game.MatchTiming.AutoDurationSec) * time.Second)
 	arena.Update()
 	assert.Equal(t, PausePeriod, arena.MatchState)
-	assert.Equal(t, false, arena.RedRealtimeScore.CurrentScore.AutoChargeStationLevel)
-	assert.Equal(t, false, arena.BlueRealtimeScore.CurrentScore.AutoChargeStationLevel)
 	plc.chargeStationsLevel[0] = false
 	plc.chargeStationsLevel[1] = true
 	arena.Update()
 	assert.Equal(t, [2]bool{false, true}, plc.chargeStationLights)
-	assert.Equal(t, false, arena.RedRealtimeScore.CurrentScore.AutoChargeStationLevel)
-	assert.Equal(t, false, arena.BlueRealtimeScore.CurrentScore.AutoChargeStationLevel)
 
 	// Check that the charge station state is captured at the start of teleop.
 	arena.MatchStartTime = time.Now().Add(-time.Duration(game.MatchTiming.WarmupDurationSec+
 		game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec) * time.Second)
 	arena.Update()
-	assert.Equal(t, false, arena.RedRealtimeScore.CurrentScore.AutoChargeStationLevel)
-	assert.Equal(t, true, arena.BlueRealtimeScore.CurrentScore.AutoChargeStationLevel)
 
 	// Move the charge stations around during teleop.
 	plc.chargeStationsLevel[0] = true
 	arena.Update()
 	assert.Equal(t, [2]bool{true, true}, plc.chargeStationLights)
-	assert.Equal(t, false, arena.RedRealtimeScore.CurrentScore.AutoChargeStationLevel)
-	assert.Equal(t, true, arena.BlueRealtimeScore.CurrentScore.AutoChargeStationLevel)
 	plc.chargeStationsLevel[0] = false
 	plc.chargeStationsLevel[1] = false
 	arena.Update()
@@ -971,17 +962,8 @@ func TestPlcMatchCycleGameSpecific(t *testing.T) {
 		time.Second)
 	arena.Update()
 	assert.Equal(t, [2]bool{true, false}, plc.chargeStationLights)
-	assert.Equal(t, false, arena.RedRealtimeScore.CurrentScore.AutoChargeStationLevel)
-	assert.Equal(t, true, arena.BlueRealtimeScore.CurrentScore.AutoChargeStationLevel)
-	assert.Equal(t, false, arena.RedRealtimeScore.CurrentScore.EndgameChargeStationLevel)
-	assert.Equal(t, false, arena.BlueRealtimeScore.CurrentScore.EndgameChargeStationLevel)
 
 	// Allow the grace period to expire.
 	time.Sleep(20 * time.Millisecond)
 	arena.Update()
-	assert.Equal(t, [2]bool{false, false}, plc.chargeStationLights)
-	assert.Equal(t, false, arena.RedRealtimeScore.CurrentScore.AutoChargeStationLevel)
-	assert.Equal(t, true, arena.BlueRealtimeScore.CurrentScore.AutoChargeStationLevel)
-	assert.Equal(t, true, arena.RedRealtimeScore.CurrentScore.EndgameChargeStationLevel)
-	assert.Equal(t, false, arena.BlueRealtimeScore.CurrentScore.EndgameChargeStationLevel)
 }

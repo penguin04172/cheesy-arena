@@ -6,22 +6,24 @@
 package game
 
 type ScoreSummary struct {
-	MobilityPoints                  int
-	AutoPoints                      int
-	GridPoints                      int
-	ChargeStationPoints             int
-	ParkPoints                      int
-	EndgamePoints                   int
-	MatchPoints                     int
-	FoulPoints                      int
-	Score                           int
-	CoopertitionBonus               bool
-	NumLinks                        int
-	NumLinksGoal                    int
-	SustainabilityBonusRankingPoint bool
-	ActivationBonusRankingPoint     bool
-	BonusRankingPoints              int
-	NumOpponentTechFouls            int
+	LeavePoints               int
+	AutoPoints                int
+	NotePoints                int
+	StagePoints               int
+	TrapPoints                int
+	EndgamePoints             int
+	MatchPoints               int
+	FoulPoints                int
+	Score                     int
+	CoopertitionBonus         bool
+	NumNotes                  int
+	NumNotesGoal              int
+	NumOnstages               int
+	NumOnstagesGoal           int
+	MelodyBonusRankingPoint   bool
+	EnsembleBonusRankingPoint bool
+	BonusRankingPoints        int
+	NumOpponentTechFouls      int
 }
 
 type MatchStatus int
@@ -52,7 +54,7 @@ func DetermineMatchStatus(redScoreSummary, blueScoreSummary *ScoreSummary, apply
 			return status
 		}
 		if status := comparePoints(
-			redScoreSummary.ChargeStationPoints, blueScoreSummary.ChargeStationPoints,
+			redScoreSummary.AutoPoints, blueScoreSummary.AutoPoints,
 		); status != TieMatch {
 			return status
 		}

@@ -8,16 +8,17 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strconv"
+
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/Team254/cheesy-arena/partner"
 	"github.com/Team254/cheesy-arena/playoff"
 	"github.com/Team254/cheesy-arena/websocket"
 	"github.com/gorilla/mux"
-	"io"
-	"net/http"
-	"os"
-	"strconv"
 )
 
 type MatchResultWithSummary struct {
@@ -244,36 +245,6 @@ func (web *Web) bracketSvgApiHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "image/svg+xml")
 	if err := web.generateBracketSvg(w, activeMatch); err != nil {
-		handleWebErr(w, err)
-		return
-	}
-}
-
-func (web *Web) gridSvgApiHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	alliance := vars["alliance"]
-	var grid game.Grid
-	if alliance == "red" {
-		grid = web.arena.RedRealtimeScore.CurrentScore.Grid
-	} else if alliance == "blue" {
-		grid = web.arena.BlueRealtimeScore.CurrentScore.Grid
-	} else {
-		handleWebErr(w, fmt.Errorf("invalid alliance %q", alliance))
-		return
-	}
-
-	w.Header().Set("Content-Type", "image/svg+xml")
-	template, err := web.parseFiles("templates/grid.svg")
-	if err != nil {
-		handleWebErr(w, err)
-		return
-	}
-	data := struct {
-		Nodes [3][9]game.NodeState
-		Links []game.Link
-	}{grid.Nodes, grid.Links()}
-	err = template.ExecuteTemplate(w, "grid", data)
-	if err != nil {
 		handleWebErr(w, err)
 		return
 	}

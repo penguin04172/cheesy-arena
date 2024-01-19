@@ -221,9 +221,10 @@ func (arena *Arena) LoadSettings() error {
 	game.UpdateMatchSounds()
 	arena.MatchTimingNotifier.Notify()
 
-	game.SustainabilityBonusLinkThresholdWithoutCoop = settings.SustainabilityBonusLinkThresholdWithoutCoop
-	game.SustainabilityBonusLinkThresholdWithCoop = settings.SustainabilityBonusLinkThresholdWithCoop
-	game.ActivationBonusPointThreshold = settings.ActivationBonusPointThreshold
+	game.MelodyBonusThresholdWithoutCoop = settings.MelodyBonusThresholdWithoutCoop
+	game.MelodyBonusThresholdWithCoop = settings.MelodyBonusThresholdWithCoop
+	game.EnsembleBonusPointThreshold = settings.EnsembleBonusPointThreshold
+	game.EnsembleBonusOnstageRobotThreshold = settings.EnsembleBonusOnstageRobotThreshold
 
 	// Reconstruct the playoff tournament in memory.
 	if err = arena.CreatePlayoffTournament(); err != nil {
@@ -954,8 +955,6 @@ func (arena *Arena) handlePlcInputOutput() {
 	teleopGracePeriod := matchStartTime.Add(game.GetDurationToTeleopEnd() + game.ChargeStationTeleopGracePeriod)
 	inGracePeriod := currentTime.Before(teleopGracePeriod)
 
-	redScore := &arena.RedRealtimeScore.CurrentScore
-	blueScore := &arena.BlueRealtimeScore.CurrentScore
 	redChargeStationLevel, blueChargeStationLevel := arena.Plc.GetChargeStationsLevel()
 	redAllianceReady := arena.checkAllianceStationsReady("R1", "R2", "R3") == nil
 	blueAllianceReady := arena.checkAllianceStationsReady("B1", "B2", "B3") == nil
@@ -998,15 +997,6 @@ func (arena *Arena) handlePlcInputOutput() {
 		} else {
 			arena.Plc.SetChargeStationLights(false, false)
 		}
-		if arena.lastMatchState != PostMatch {
-			go func() {
-				// Capture a single reading of the charge station levels after the grace period following the match.
-				time.Sleep(game.ChargeStationTeleopGracePeriod)
-				redScore.EndgameChargeStationLevel, blueScore.EndgameChargeStationLevel =
-					arena.Plc.GetChargeStationsLevel()
-				arena.RealtimeScoreNotifier.Notify()
-			}()
-		}
 	case AutoPeriod:
 		arena.Plc.SetStackBuzzer(false)
 		arena.Plc.SetStackLights(!redAllianceReady, !blueAllianceReady, false, true)
@@ -1018,11 +1008,6 @@ func (arena *Arena) handlePlcInputOutput() {
 		// Game-specific PLC functions.
 		arena.Plc.SetChargeStationLights(redChargeStationLevel, blueChargeStationLevel)
 		arena.Plc.SetStackLights(!redAllianceReady, !blueAllianceReady, false, true)
-		if arena.lastMatchState != TeleopPeriod {
-			// Capture a single reading of the charge station levels after the autonomous pause.
-			redScore.AutoChargeStationLevel, blueScore.AutoChargeStationLevel = arena.Plc.GetChargeStationsLevel()
-			arena.RealtimeScoreNotifier.Notify()
-		}
 	}
 }
 
