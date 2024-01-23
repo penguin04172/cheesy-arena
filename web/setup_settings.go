@@ -100,6 +100,9 @@ func (web *Web) settingsPostHandler(w http.ResponseWriter, r *http.Request) {
 	eventSettings.PauseDurationSec, _ = strconv.Atoi(r.PostFormValue("pauseDurationSec"))
 	eventSettings.TeleopDurationSec, _ = strconv.Atoi(r.PostFormValue("teleopDurationSec"))
 	eventSettings.WarningRemainingDurationSec, _ = strconv.Atoi(r.PostFormValue("warningRemainingDurationSec"))
+	eventSettings.CoopertitionActiveDurationSec, _ = strconv.Atoi(r.PostFormValue("coopertitionActiveDurationSec"))
+	eventSettings.AmplificationDurationSec, _ = strconv.Atoi(r.PostFormValue("amplificationDurationSec"))
+	eventSettings.AmplificationNoteThreshold, _ = strconv.Atoi(r.PostFormValue("amplificationNoteThreshold"))
 	eventSettings.MelodyBonusThresholdWithoutCoop, _ =
 		strconv.Atoi(r.PostFormValue("MelodyBonusThresholdWithoutCoop"))
 	eventSettings.MelodyBonusThresholdWithCoop, _ =

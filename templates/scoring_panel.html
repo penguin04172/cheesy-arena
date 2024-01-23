@@ -9,47 +9,123 @@
 <div id="matchName">&nbsp;</div>
 <div id="alliance">
   <div class="scoring-section">
-    <div class="scoring-header">
-      <div>&nbsp;</div>
-      <div>Mobility</div>
-      <div>Auto Dock</div>
-      <div>Endgame</div>
-    </div>
-    {{range $i := seq 3}}
-      <div>
-        <div id="team{{$i}}" class="team robot-field"></div>
-        <div id="mobilityStatus{{$i}}" class="boolean robot-field" onclick="handleClick('mobilityStatus', {{$i}});">
-          <div class="value"></div>
+    <div class="two-col">
+      <div class="two-col-section">
+        <div class="two-col-header">
+          <div>Speaker</div>
         </div>
-        <div id="autoDockStatus{{$i}}" class="boolean robot-field" onclick="handleClick('autoDockStatus', {{$i}});">
-          <div class="value"></div>
+        <div class="two-col-row">
+          <div class="two-col-scoring-header">Auto: </div>
+          <div class="two-col-scoring-minus" onclick="handleClick('minus', 3)">&minus;</div>
+          <div id="autoNoteSpeaker" class="two-col-scoring-field">
+            <div class="value">0</div>
+          </div>
+          <div class="two-col-scoring-plus" onclick="handleClick('plus', 3)">&plus;</div>
         </div>
-        <div id="endgameStatus{{$i}}" class="endgame-status robot-field"
-          onclick="handleClick('endgameStatus', {{$i}});">
-          <div class="value"></div>
+        <div class="two-col-row">
+          <div class="two-col-scoring-header">TeleOp: </div>
+          <div class="two-col-scoring-minus" onclick="handleClick('minus', 4)">&minus;</div>
+          <div id="teleopNoteSpeaker" class="two-col-scoring-field">
+            <div class="value">0</div>
+          </div>
+          <div class="two-col-scoring-plus" onclick="handleClick('plus', 4)">&plus;</div>
+        </div>
+        <div class="two-col-row">
+          <div class="two-col-scoring-header">Amplified: </div>
+          <div class="two-col-scoring-minus" onclick="handleClick('minus', 5)">&minus;</div>
+          <div id="teleopNoteAmplifiedSpeaker" class="two-col-scoring-field">
+            <div class="value">0</div>
+          </div>
+          <div class="two-col-scoring-plus" onclick="handleClick('plus', 5)">&plus;</div>
         </div>
       </div>
-    {{end}}
-  </div>
-  <div id="chargeStation" class="scoring-section">
-    <div id="autoChargeStationLevel" class="charge-station-level robot-field"
-      onclick="handleClick('autoChargeStationLevel');">
-      <div class="value"></div>
+      <div class="two-col-section">
+        <div class="two-col-header">
+          <div>Amp</div>
+        </div>
+        <div class="two-col-row">
+          <div class="two-col-scoring-header">Auto: </div>
+          <div class="two-col-scoring-minus" onclick="handleClick('minus', 1)">&minus;</div>
+          <div id="autoNoteAmp" class="two-col-scoring-field">
+            <div class="value">0</div>
+          </div>
+          <div class="two-col-scoring-plus" onclick="handleClick('plus', 1)">&plus;</div>
+        </div>
+        <div class="two-col-row">
+          <div class="two-col-scoring-header">TeleOp: </div>
+          <div class="two-col-scoring-minus" onclick="handleClick('minus', 2)">&minus;</div>
+          <div id="teleopNoteAmp" class="two-col-scoring-field">
+            <div class="value">0</div>
+          </div>
+          <div class="two-col-scoring-plus" onclick="handleClick('plus', 2)">&plus;</div>
+        </div>
+      </div>
+      <div class="two-col-section">
+        <div class="two-col-header">
+          <div>Trap</div>
+        </div>
+        <div class="two-col-row">
+          <div id="trapStatus1" class="boolean two-col-scoring-field" onclick="handleClick('trapStatus', 1);">Left</div>
+          <div id="trapStatus2" class="boolean two-col-scoring-field" onclick="handleClick('trapStatus', 2);">Center</div>
+          <div id="trapStatus3" class="boolean two-col-scoring-field" onclick="handleClick('trapStatus', 3);">Right</div>
+        </div>
+      </div>
     </div>
-    <div>Auto</div>
-    <div>Charge Station</div>
-    <div>Endgame</div>
-    <div id="endgameChargeStationLevel" class="charge-station-level robot-field"
-      onclick="handleClick('endgameChargeStationLevel');">
-      <div class="value"></div>
+    
+    <div class="two-col">
+      <div class="two-col-section">
+        <div class="two-col-header">
+          <div>Bonus</div>
+        </div>
+        <div class="bonus-row">
+          <div>
+            <div id="coopStatus" class="boolean bonus-node">Coopertition</div>
+            <div class="bonus-node">&nbsp;</div>
+            <div class="bonus-node bonus-light">&nbsp;</div>
+            <button id="coopBtn" class="bonus-node bonus-btn" onclick="handleClick('coopertition')" disabled>Launch</button>
+          </div>
+          <div>
+            <div id="ampStatus" class="boolean bonus-node">Amplification</div>
+            <div class="bonus-node bonus-light">&nbsp;</div>
+            <div class="bonus-node bonus-light">&nbsp;</div>
+            <button class="bonus-node bonus-btn" onclick="handleClick('amplification')" disabled>Launch</button>
+          </div>
+        </div>
+      </div>
+      <div class="two-col-section">
+        <div class="two-col-header">
+          <div>Robots</div>
+        </div>
+        <div class="two-col-row">
+          <div>
+            <div class="two-col-scoring-header">Team</div>
+            <div class="two-col-scoring-header">Leave</div>
+            <div class="two-col-scoring-header">Endgame</div>
+          </div>
+          {{range $i := seq 3}}
+            <div>
+              <div id="team{{$i}}" class="team two-col-scoring-field"></div>
+              <div id="leaveStatus{{$i}}" class="boolean two-col-scoring-field" onclick="handleClick('leaveStatus', {{$i}});">
+                <div class="value"></div>
+              </div>
+              <div id="endgameStatus{{$i}}" class="endgame-status two-col-scoring-field"
+                onclick="handleClick('endgameStatus', {{$i}});">
+                <div class="value"></div>
+              </div>
+            </div>
+          {{end}}
+        </div>
+        <div class="two-col-row">
+          <div id="endgameHarmony" class="harmony robot-field"
+            onclick="handleClick('endgameHarmony');">
+            <div class="value"></div>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
-  <div id="grid">
-    {{template "gridRow" dict "rowIndex" 2 "validNodeStates" (index .ValidGridNodeStates 2)}}
-    {{template "gridRow" dict "rowIndex" 1 "validNodeStates" (index .ValidGridNodeStates 1)}}
-    {{template "gridRow" dict "rowIndex" 0 "validNodeStates" (index .ValidGridNodeStates 0)}}
   </div>
 </div>
+
 <div id="commitMatchScore">
   <button type="button" class="btn btn-info" onclick="commitMatchScore();">
     Commit Final Match Score
@@ -65,32 +141,9 @@
 {{define "script"}}
 <script src="/static/js/match_timing.js"></script>
 <script src="/static/js/scoring_panel.js"></script>
-{{end}}
-{{define "gridRow"}}
-<div class="grid-row">
-  {{range $i, $validStates := .validNodeStates}}
-    {{template "gridNode" dict "rowIndex" $.rowIndex "nodeIndex" $i "validStates" $validStates}}
-  {{end}}
-</div>
-{{end}}
-{{define "gridNode"}}
-<div class="grid-node" data-node="{{.nodeIndex}}">
-  <div id="gridAutoScoringRow{{$.rowIndex}}Node{{$.nodeIndex}}" class="grid-node-auto"
-    onclick="handleClick('gridAutoScoring', 0, {{$.rowIndex}}, {{$.nodeIndex}})">
-    Auto
-  </div>
-  <div id="gridNodeStatesRow{{$.rowIndex}}Node{{$.nodeIndex}}" class="grid-node-states">
-    {{range $i, $state := .validStates}}
-      {{if ne $state "Empty"}}
-        {{template "gridNodeButton" dict "i" $i "state" $state "rowIndex" $.rowIndex "nodeIndex" $.nodeIndex}}
-      {{end}}
-    {{end}}
-  </div>
-</div>
-{{end}}
-{{define "gridNodeButton"}}
-<div class="grid-node-button" data-node-state="{{nodeStateToInt .i}}"
-  onclick="handleClick('gridNode', 0, {{.rowIndex}}, {{.nodeIndex}}, {{nodeStateToInt .i}})">
-  <img src="/static/img/node_states/{{.state}}.svg" />
-</div>
+<script>
+  function test() {
+    console.log('click');
+  }
+</script>
 {{end}}

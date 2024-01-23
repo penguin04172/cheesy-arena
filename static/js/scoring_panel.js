@@ -50,33 +50,28 @@ const handleRealtimeScore = function(data) {
 
   for (let i = 0; i < 3; i++) {
     const i1 = i + 1;
-    $(`#mobilityStatus${i1}>.value`).text(score.MobilityStatuses[i] ? "Yes" : "No");
-    $("#mobilityStatus" + i1).attr("data-value", score.MobilityStatuses[i]);
-    $("#autoDockStatus" + i1 + ">.value").text(score.AutoDockStatuses[i] ? "Yes" : "No");
-    $("#autoDockStatus" + i1).attr("data-value", score.AutoDockStatuses[i]);
+    $(`#leaveStatus${i1}>.value`).text(score.LeaveStatuses[i] ? "Yes" : "No");
+    $("#leaveStatus" + i1).attr("data-value", score.LeaveStatuses[i]);
+    $("#trapStatus" + i1).attr("data-value", score.TrapStatuses[i]);
     $("#endgameStatus" + i1 + ">.value").text(getEndgameStatusText(score.EndgameStatuses[i]));
     $("#endgameStatus" + i1).attr("data-value", score.EndgameStatuses[i]);
   }
 
-  $("#autoChargeStationLevel>.value").text(score.AutoChargeStationLevel ? "Level" : "Not Level");
-  $("#autoChargeStationLevel").attr("data-value", score.AutoChargeStationLevel);
-  $("#endgameChargeStationLevel>.value").text(score.EndgameChargeStationLevel ? "Level" : "Not Level");
-  $("#endgameChargeStationLevel").attr("data-value", score.EndgameChargeStationLevel);
+  $("#coopStatus").attr("data-value", score.Coopertition);
+  $("#coopBtn").attr('disabled', score.Coopertition);
+  $("#endgameHarmony>.value").text(score.EndgameHarmony ? "Harmony" : "Not Harmony");
+  $("#endgameHarmony").attr("data-value", score.EndgameHarmony);
 
-  for (let i = 0; i < 3; i++) {
-    for (let j = 0; j < 9; j++) {
-      $(`#gridAutoScoringRow${i}Node${j}`).attr("data-value", score.Grid.AutoScoring[i][j]);
-      $(`#gridNodeStatesRow${i}Node${j}`).children().each(function() {
-        const element = $(this);
-        element.attr("data-value", element.attr("data-node-state") === score.Grid.Nodes[i][j].toString());
-      });
-    }
-  }
+  $(`#autoNoteAmp>.value`).text(score.AutoNoteAmp);
+  $(`#autoNoteSpeaker>.value`).text(score.AutoNoteSpeaker);
+  $(`#teleopNoteAmp>.value`).text(score.TeleopNoteAmp);
+  $(`#teleopNoteSpeaker>.value`).text(score.TeleopNoteSpeaker);
+  $(`#teleopNoteAmplifiedSpeaker>.value`).text(score.TeleopNoteAmplifiedSpeaker);
 };
 
 // Handles an element click and sends the appropriate websocket message.
-const handleClick = function(command, teamPosition = 0, gridRow = 0, gridNode = 0, nodeState = 0) {
-  websocket.send(command, {TeamPosition: teamPosition, GridRow: gridRow, GridNode: gridNode, NodeState: nodeState});
+const handleClick = function(command, target = 0) {
+  websocket.send(command, {Target: target});
 };
 
 // Sends a websocket message to indicate that the score for this alliance is ready.
@@ -92,7 +87,9 @@ const getEndgameStatusText = function(level) {
     case 1:
       return "Park";
     case 2:
-      return "Dock";
+      return "Onstage";
+    case 3:
+      return "Spotlit"
     default:
       return "None";
   }

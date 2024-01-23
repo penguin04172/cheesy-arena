@@ -8,11 +8,12 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strconv"
+
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/gorilla/mux"
-	"net/http"
-	"strconv"
 )
 
 type MatchReviewListItem struct {
@@ -98,8 +99,7 @@ func (web *Web) matchReviewEditGetHandler(w http.ResponseWriter, r *http.Request
 		Match           *model.Match
 		MatchResultJson string
 		Rules           map[int]*game.Rule
-		ValidNodeStates map[game.Row]map[int]map[game.NodeState]string
-	}{web.arena.EventSettings, match, string(matchResultJson), game.GetAllRules(), game.ValidGridNodeStates()}
+	}{web.arena.EventSettings, match, string(matchResultJson), game.GetAllRules()}
 	err = template.ExecuteTemplate(w, "base", data)
 	if err != nil {
 		handleWebErr(w, err)

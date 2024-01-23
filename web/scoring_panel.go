@@ -7,15 +7,15 @@ package web
 
 import (
 	"fmt"
+	"io"
+	"log"
+	"net/http"
+
 	"github.com/Team254/cheesy-arena/field"
-	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/Team254/cheesy-arena/websocket"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
-	"io"
-	"log"
-	"net/http"
 )
 
 // Renders the scoring interface which enables input of scores in real-time.
@@ -38,10 +38,9 @@ func (web *Web) scoringPanelHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	data := struct {
 		*model.EventSettings
-		PlcIsEnabled        bool
-		Alliance            string
-		ValidGridNodeStates map[game.Row]map[int]map[game.NodeState]string
-	}{web.arena.EventSettings, web.arena.Plc.IsEnabled(), alliance, game.ValidGridNodeStates()}
+		PlcIsEnabled bool
+		Alliance     string
+	}{web.arena.EventSettings, web.arena.Plc.IsEnabled(), alliance}
 	err = template.ExecuteTemplate(w, "base_no_navbar", data)
 	if err != nil {
 		handleWebErr(w, err)
@@ -108,10 +107,7 @@ func (web *Web) scoringPanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 			web.arena.ScoringStatusNotifier.Notify()
 		} else {
 			args := struct {
-				TeamPosition int
-				GridRow      int
-				GridNode     int
-				NodeState    game.NodeState
+				Target int
 			}{}
 			err = mapstructure.Decode(data, &args)
 			if err != nil {
@@ -120,57 +116,98 @@ func (web *Web) scoringPanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 			}
 
 			switch command {
-			case "mobilityStatus":
-				if args.TeamPosition >= 1 && args.TeamPosition <= 3 {
-					score.MobilityStatuses[args.TeamPosition-1] = !score.MobilityStatuses[args.TeamPosition-1]
+			case "leaveStatus":
+				if args.Target >= 1 && args.Target <= 3 {
+					score.LeaveStatuses[args.Target-1] = !score.LeaveStatuses[args.Target-1]
 					scoreChanged = true
 				}
-			case "autoDockStatus":
-				if args.TeamPosition >= 1 && args.TeamPosition <= 3 {
-					score.AutoDockStatuses[args.TeamPosition-1] = !score.AutoDockStatuses[args.TeamPosition-1]
+			case "trapStatus":
+				if args.Target >= 1 && args.Target <= 3 {
+					score.TrapStatuses[args.Target-1] = !score.TrapStatuses[args.Target-1]
+					scoreChanged = true
+				}
+			case "plus":
+				if args.Target >= 1 && args.Target <= 5 {
+					switch args.Target {
+					case 1:
+						incrementGoal(&score.AutoNoteAmp)
+						if !score.Amplification {
+							incrementGoal(&score.AccumulateNote)
+						}
+					case 2:
+						incrementGoal(&score.TeleopNoteAmp)
+						if !score.Amplification {
+							incrementGoal(&score.AccumulateNote)
+						}
+					case 3:
+						incrementGoal(&score.AutoNoteSpeaker)
+					case 4:
+						incrementGoal(&score.TeleopNoteSpeaker)
+					case 5:
+						incrementGoal(&score.TeleopNoteAmplifiedSpeaker)
+					}
+					scoreChanged = true
+				}
+			case "minus":
+				if args.Target >= 1 && args.Target <= 5 {
+					switch args.Target {
+					case 1:
+						decrementGoal(&score.AutoNoteAmp)
+						if !score.Amplification {
+							decrementGoal(&score.AccumulateNote)
+						}
+					case 2:
+						decrementGoal(&score.TeleopNoteAmp)
+						if !score.Amplification {
+							decrementGoal(&score.AccumulateNote)
+						}
+					case 3:
+						decrementGoal(&score.AutoNoteSpeaker)
+					case 4:
+						decrementGoal(&score.TeleopNoteSpeaker)
+					case 5:
+						decrementGoal(&score.TeleopNoteAmplifiedSpeaker)
+					}
 					scoreChanged = true
 				}
 			case "endgameStatus":
-				if args.TeamPosition >= 1 && args.TeamPosition <= 3 {
-					score.EndgameStatuses[args.TeamPosition-1]++
-					if score.EndgameStatuses[args.TeamPosition-1] > 2 {
-						score.EndgameStatuses[args.TeamPosition-1] = 0
+				if args.Target >= 1 && args.Target <= 3 {
+					score.EndgameStatuses[args.Target-1]++
+					if score.EndgameStatuses[args.Target-1] > 3 {
+						score.EndgameStatuses[args.Target-1] = 0
 					}
 					scoreChanged = true
 				}
-			case "autoChargeStationLevel":
-				score.AutoChargeStationLevel = !score.AutoChargeStationLevel
+			case "coopertition":
+				score.Coopertition = true
 				scoreChanged = true
-			case "endgameChargeStationLevel":
-				score.EndgameChargeStationLevel = !score.EndgameChargeStationLevel
+			case "amplification":
+				score.Amplification = true
 				scoreChanged = true
-			case "gridAutoScoring":
-				if args.GridRow >= 0 && args.GridRow <= 2 && args.GridNode >= 0 && args.GridNode <= 8 {
-					score.Grid.AutoScoring[args.GridRow][args.GridNode] =
-						!score.Grid.AutoScoring[args.GridRow][args.GridNode]
-					scoreChanged = true
-				}
-			case "gridNode":
-				if args.GridRow >= 0 && args.GridRow <= 2 && args.GridNode >= 0 && args.GridNode <= 8 {
-					currentState := score.Grid.Nodes[args.GridRow][args.GridNode]
-					if currentState == args.NodeState {
-						score.Grid.Nodes[args.GridRow][args.GridNode] = game.Empty
-						if web.arena.MatchState == field.AutoPeriod || web.arena.MatchState == field.PausePeriod {
-							score.Grid.AutoScoring[args.GridRow][args.GridNode] = false
-						}
-					} else {
-						score.Grid.Nodes[args.GridRow][args.GridNode] = args.NodeState
-						if web.arena.MatchState == field.AutoPeriod || web.arena.MatchState == field.PausePeriod {
-							score.Grid.AutoScoring[args.GridRow][args.GridNode] = true
-						}
-					}
-					scoreChanged = true
-				}
+			case "endgameHarmony":
+				score.EndgameHarmony = !score.EndgameHarmony
+				scoreChanged = true
 			}
-
 			if scoreChanged {
 				web.arena.RealtimeScoreNotifier.Notify()
 			}
 		}
 	}
+}
+
+// Increments the cargo count for the given goal.
+func incrementGoal(goal *int) bool {
+	// Use just the first hub quadrant for manual scoring.
+	*goal++
+	return true
+}
+
+// Decrements the cargo for the given goal.
+func decrementGoal(goal *int) bool {
+	// Use just the first hub quadrant for manual scoring.
+	if *goal > 0 {
+		*goal--
+		return true
+	}
+	return false
 }

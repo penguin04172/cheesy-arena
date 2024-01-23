@@ -6,20 +6,28 @@
 package game
 
 type Score struct {
-	LeaveStatuses              [3]bool
-	AutoNoteAmp                int
-	AutoNoteSpeaker            int
-	TeleopNoteAmp              int
-	TeleopNoteSpeaker          int
-	TeleopNoteAmplifiedSpeaker int
-	TeleopNoteTrap             int
-	EndgameStatuses            [3]EndgameStatus
-	EndgameHarmony             bool
-	Coopertition               bool
-	Fouls                      []Foul
-	PlayoffDq                  bool
+	LeaveStatuses                     [3]bool
+	AutoNoteAmp                       int
+	AutoNoteSpeaker                   int
+	TeleopNoteAmp                     int
+	TeleopNoteSpeaker                 int
+	TeleopNoteAmplifiedSpeaker        int
+	AccumulateNote                    int
+	TrapStatuses                      [3]bool
+	EndgameStatuses                   [3]EndgameStatus
+	EndgameHarmony                    bool
+	Coopertition                      bool
+	CoopertitionActive                bool
+	Amplification                     bool
+	AmplifiedNoteCount                int
+	AmplificationRemainingDurationSec float64
+	Fouls                             []Foul
+	PlayoffDq                         bool
 }
 
+var CoopertitionActiveDurationSec = 45
+var AmplificationDurationSec = 13
+var AmplificationNoteThreshold = 4
 var MelodyBonusThresholdWithoutCoop = 18
 var MelodyBonusThresholdWithCoop = 15
 var EnsembleBonusPointThreshold = 10
@@ -63,20 +71,24 @@ func (score *Score) Summarize(opponentScore *Score) *ScoreSummary {
 			summary.StagePoints += 1
 		case EndgameOnstage:
 			summary.StagePoints += 3
+			summary.NumOnstages += 1
 		case EndgameOnstageWithSpotlit:
 			summary.StagePoints += 4
+			summary.NumOnstages += 1
+		}
+
+		if score.TrapStatuses[i] {
+			summary.TrapPoints += 5
+			summary.StagePoints += 5
 		}
 	}
 
-	summary.StagePoints += score.TeleopNoteTrap * 5
+	if score.EndgameHarmony {
+		summary.StagePoints += 2
+	}
 
 	summary.NotePoints = autoNotePoints + teleopNotePoints
 	summary.EndgamePoints = summary.StagePoints
-
-	if score.EndgameHarmony {
-		summary.EndgamePoints += 2
-	}
-
 	summary.MatchPoints = summary.LeavePoints + summary.NotePoints + summary.StagePoints
 
 	// Calculate penalty points.
@@ -131,7 +143,7 @@ func (score *Score) Equals(other *Score) bool {
 		score.TeleopNoteAmp != other.TeleopNoteAmp ||
 		score.TeleopNoteSpeaker != other.TeleopNoteSpeaker ||
 		score.TeleopNoteAmplifiedSpeaker != other.TeleopNoteAmplifiedSpeaker ||
-		score.TeleopNoteTrap != other.TeleopNoteTrap ||
+		score.TrapStatuses != other.TrapStatuses ||
 		score.EndgameStatuses != other.EndgameStatuses ||
 		score.EndgameHarmony != other.EndgameHarmony ||
 		score.Coopertition != other.Coopertition ||

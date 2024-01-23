@@ -221,6 +221,8 @@ func (arena *Arena) LoadSettings() error {
 	game.UpdateMatchSounds()
 	arena.MatchTimingNotifier.Notify()
 
+	game.AmplificationDurationSec = settings.AmplificationDurationSec
+	game.AmplificationNoteThreshold = settings.AmplificationNoteThreshold
 	game.MelodyBonusThresholdWithoutCoop = settings.MelodyBonusThresholdWithoutCoop
 	game.MelodyBonusThresholdWithCoop = settings.MelodyBonusThresholdWithCoop
 	game.EnsembleBonusPointThreshold = settings.EnsembleBonusPointThreshold
@@ -621,10 +623,19 @@ func (arena *Arena) Update() {
 			auto = false
 			enabled = true
 			sendDsPacket = true
+
+			arena.BlueRealtimeScore.CurrentScore.CoopertitionActive = true
+			arena.RedRealtimeScore.CurrentScore.CoopertitionActive = true
 		}
 	case TeleopPeriod:
 		auto = false
 		enabled = true
+
+		if matchTimeSec-game.GetDurationToTeleopStart().Seconds() > float64(game.CoopertitionActiveDurationSec) && (arena.BlueRealtimeScore.CurrentScore.CoopertitionActive || arena.RedRealtimeScore.CurrentScore.CoopertitionActive) {
+			arena.BlueRealtimeScore.CurrentScore.CoopertitionActive = false
+			arena.RedRealtimeScore.CurrentScore.CoopertitionActive = false
+		}
+
 		if matchTimeSec >= game.GetDurationToTeleopEnd().Seconds() {
 			arena.MatchState = PostMatch
 			auto = false

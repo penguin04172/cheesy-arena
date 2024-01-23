@@ -46,6 +46,9 @@ type EventSettings struct {
 	PauseDurationSec                   int
 	TeleopDurationSec                  int
 	WarningRemainingDurationSec        int
+	CoopertitionActiveDurationSec      int
+	AmplificationDurationSec           int
+	AmplificationNoteThreshold         int
 	MelodyBonusThresholdWithoutCoop    int
 	MelodyBonusThresholdWithCoop       int
 	EnsembleBonusPointThreshold        int
@@ -77,6 +80,9 @@ func (database *Database) GetEventSettings() (*EventSettings, error) {
 		PauseDurationSec:                   game.MatchTiming.PauseDurationSec,
 		TeleopDurationSec:                  game.MatchTiming.TeleopDurationSec,
 		WarningRemainingDurationSec:        game.MatchTiming.WarningRemainingDurationSec,
+		CoopertitionActiveDurationSec:      game.CoopertitionActiveDurationSec,
+		AmplificationDurationSec:           game.AmplificationDurationSec,
+		AmplificationNoteThreshold:         game.AmplificationNoteThreshold,
 		MelodyBonusThresholdWithoutCoop:    game.MelodyBonusThresholdWithoutCoop,
 		MelodyBonusThresholdWithCoop:       game.MelodyBonusThresholdWithCoop,
 		EnsembleBonusPointThreshold:        game.EnsembleBonusPointThreshold,
