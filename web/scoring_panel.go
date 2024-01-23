@@ -12,6 +12,7 @@ import (
 	"net/http"
 
 	"github.com/Team254/cheesy-arena/field"
+	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/Team254/cheesy-arena/websocket"
 	"github.com/gorilla/mux"
@@ -144,7 +145,15 @@ func (web *Web) scoringPanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 					case 4:
 						incrementGoal(&score.TeleopNoteSpeaker)
 					case 5:
-						incrementGoal(&score.TeleopNoteAmplifiedSpeaker)
+						if score.Amplification {
+							incrementGoal(&score.TeleopNoteAmplifiedSpeaker)
+							incrementGoal(&score.AmplifiedNoteCount)
+							if score.AmplifiedNoteCount >= game.AmplificationNoteThreshold {
+								score.Amplification = false
+								score.AmplificationRemainingDurationSec = 0
+								score.AccumulateNote = 0
+							}
+						}
 					}
 					scoreChanged = true
 				}
@@ -167,6 +176,7 @@ func (web *Web) scoringPanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 						decrementGoal(&score.TeleopNoteSpeaker)
 					case 5:
 						decrementGoal(&score.TeleopNoteAmplifiedSpeaker)
+						decrementGoal(&score.AmplifiedNoteCount)
 					}
 					scoreChanged = true
 				}
@@ -179,11 +189,21 @@ func (web *Web) scoringPanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 					scoreChanged = true
 				}
 			case "coopertition":
-				score.Coopertition = true
-				scoreChanged = true
+				if score.AccumulateNote >= 1 {
+					score.CoopertitionActive = false
+					score.Coopertition = true
+					decrementGoal(&score.AccumulateNote)
+					scoreChanged = true
+				}
 			case "amplification":
-				score.Amplification = true
-				scoreChanged = true
+				if score.AccumulateNote >= 2 {
+					score.Amplification = true
+					score.AmplificationStartedTimeSec = web.arena.MatchTimeSec()
+					score.AmplificationRemainingDurationSec = float64(game.AmplificationDurationSec)
+					score.AmplifiedNoteCount = 0
+					score.AccumulateNote = 0
+					scoreChanged = true
+				}
 			case "endgameHarmony":
 				score.EndgameHarmony = !score.EndgameHarmony
 				scoreChanged = true

@@ -79,16 +79,30 @@
         </div>
         <div class="bonus-row">
           <div>
-            <div id="coopStatus" class="boolean bonus-node">Coopertition</div>
-            <div class="bonus-node">&nbsp;</div>
-            <div class="bonus-node bonus-light">&nbsp;</div>
-            <button id="coopBtn" class="bonus-node bonus-btn" onclick="handleClick('coopertition')" disabled>Launch</button>
+            <div class="bonus-node">Accumulated Count</div>
+            <div id="accumulateNote" class="bonus-node bonus-light">
+              <div class="value">
+                
+              </div>
+            </div>
           </div>
           <div>
-            <div id="ampStatus" class="boolean bonus-node">Amplification</div>
-            <div class="bonus-node bonus-light">&nbsp;</div>
-            <div class="bonus-node bonus-light">&nbsp;</div>
-            <button class="bonus-node bonus-btn" onclick="handleClick('amplification')" disabled>Launch</button>
+            <div class="bonus-node">Amp Remaining</div>
+            <div id="amplificationRemain" class="bonus-node bonus-light">
+              <div class="value">
+
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bonus-row">
+          <div>
+            <div id="coopertitionStatus" class="boolean bonus-node">Coopertition</div>
+            <button id="coopertitionBtn" class="bonus-node bonus-btn" onclick="handleClick('coopertition')" disabled>Launch</button>
+          </div>
+          <div>
+            <div id="amplificationStatus" class="boolean bonus-node">Amplification</div>
+            <button id="amplificationBtn" class="bonus-node bonus-btn" onclick="handleClick('amplification')" disabled>Launch</button>
           </div>
         </div>
       </div>

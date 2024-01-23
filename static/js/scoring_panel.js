@@ -57,8 +57,12 @@ const handleRealtimeScore = function(data) {
     $("#endgameStatus" + i1).attr("data-value", score.EndgameStatuses[i]);
   }
 
-  $("#coopStatus").attr("data-value", score.Coopertition);
-  $("#coopBtn").attr('disabled', score.Coopertition);
+  $("#accumulateNote>.value").text(score.AccumulateNote);
+  $("#coopertitionStatus").attr("data-value", score.Coopertition);
+  $("#coopertitionBtn").attr('disabled', score.Coopertition || score.AccumulateNote < 1);
+  $("#amplificationRemain>.value").text(`${parseInt(score.AmplificationRemainingDurationSec+0.5)} / ${4 - score.AmplifiedNoteCount}`)
+  $("#amplificationStatus").attr("data-value", score.Amplification);
+  $("#amplificationBtn").attr('disabled', score.Amplification || score.AccumulateNote < 2);
   $("#endgameHarmony>.value").text(score.EndgameHarmony ? "Harmony" : "Not Harmony");
   $("#endgameHarmony").attr("data-value", score.EndgameHarmony);
 

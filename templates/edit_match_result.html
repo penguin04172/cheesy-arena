@@ -27,51 +27,65 @@
   <div class="well well-{{"{{alliance}}"}}">
     <fieldset>
       <legend>Autonomous</legend>
-      <b>Mobility</b>
+      <b>Leave</b>
       <div class="form-group">
         <div class="row">
           {{range $i := seq 3}}
             <div class="col-lg-2">
               <label class="col-lg-8 control-label">Team {{"{{team"}}{{$i}}{{"}}"}}</label>
-              <input type="checkbox" class="input-sm" name="{{"{{alliance}}"}}MobilityStatuses{{$i}}">
+              <input type="checkbox" class="input-sm" name="{{"{{alliance}}"}}LeaveStatuses{{$i}}">
             </div>
           {{end}}
         </div>
-      </div>
-      <b>Charge Station Docking</b>
-      <div class="form-group">
         <div class="row">
-          {{range $i := seq 3}}
+          <label class="col-lg-1 col-lg-offset-1">Amp</label>
           <div class="col-lg-2">
-            <label class="col-lg-8 control-label">Team {{"{{team"}}{{$i}}{{"}}"}}</label>
-            <input type="checkbox" class="input-sm" name="{{"{{alliance}}"}}AutoDockStatuses{{$i}}">
+            <input type="text" class="form-control input-sm" name="{{"{{alliance}}"}}AutoNoteAmp">
           </div>
-          {{end}}
-        </div>
-        <div class="row">
-          <div class="col-lg-4 col-lg-offset-1">
-            <label class="col-lg-8 control-label">Charge Station Is Level?</label>
-            <input type="checkbox" class="input-sm" name="{{"{{alliance}}"}}AutoChargeStationLevel">
+          <label class="col-lg-1">Speaker</label>
+          <div class="col-lg-2">
+            <input type="text" class="form-control input-sm" name="{{"{{alliance}}"}}AutoNoteSpeaker">
           </div>
         </div>
       </div>
     </fieldset>
     <fieldset>
-      <legend>Grid</legend>
-      <div class="row">
-        <div class="col-lg-1"></div>
-        {{range $i := seq 9}}
-        <label class="col-lg-1 control-label">{{$i}}</label>
-        {{end}}
+      <legend>TeleOp</legend>
+      <div class="form-group">
+        <div class="row">
+          <label class="col-lg-1 col-lg-offset-1">Amp</label>
+          <div class="col-lg-2">
+            <input type="text" class="form-control input-sm" name="{{"{{alliance}}"}}TeleopNoteAmp">
+          </div>
+          <label class="col-lg-1">Speaker</label>
+          <div class="col-lg-2">
+            <input type="text" class="form-control input-sm" name="{{"{{alliance}}"}}TeleopNoteSpeaker">
+          </div>
+          <label class="col-lg-1">Amplified</label>
+          <div class="col-lg-2">
+            <input type="text" class="form-control input-sm" name="{{"{{alliance}}"}}TeleopNoteAmplifiedSpeaker">
+          </div>
+        </div>
       </div>
-      <br />
-      {{template "gridRow" dict "row" 2 "rowName" "Top" "validNodeStates" .ValidNodeStates}}
-      {{template "gridRow" dict "row" 1 "rowName" "Middle" "validNodeStates" .ValidNodeStates}}
-      {{template "gridRow" dict "row" 0 "rowName" "Bottom" "validNodeStates" .ValidNodeStates}}
     </fieldset>
     <fieldset>
       <legend>Endgame</legend>
       <div class="form-group">
+        <div class="row">
+          <div class="col-lg-2">
+            <label class="col-lg-10 control-label">Trap Left</label>
+            <input type="checkbox" class="input-sm" name="{{"{{alliance}}"}}TrapStatuses1">
+          </div>
+          <div class="col-lg-2">
+            <label class="col-lg-10 control-label">Trap Center</label>
+            <input type="checkbox" class="input-sm" name="{{"{{alliance}}"}}TrapStatuses2">
+          </div>
+          <div class="col-lg-2">
+            <label class="col-lg-10 control-label">Trap Right</label>
+            <input type="checkbox" class="input-sm" name="{{"{{alliance}}"}}TrapStatuses3">
+          </div>
+        </div>
+
         {{range $i := seq 3}}
           <div class="row">
             <label class="col-lg-1 col-lg-offset-1 control-label">Team {{"{{team"}}{{$i}}{{"}}"}}</label>
@@ -82,13 +96,16 @@
               <input type="radio" name="{{"{{alliance}}"}}EndgameStatuses{{$i}}" value="1">Parked
             </div>
             <div class="radio col-lg-1">
-              <input type="radio" name="{{"{{alliance}}"}}EndgameStatuses{{$i}}" value="2">Docked
+              <input type="radio" name="{{"{{alliance}}"}}EndgameStatuses{{$i}}" value="2">Onstage
+            </div>
+            <div class="radio col-lg-1">
+              <input type="radio" name="{{"{{alliance}}"}}EndgameStatuses{{$i}}" value="3">Spotlit
             </div>
           </div>
         {{end}}
         <div class="col-lg-4 col-lg-offset-1">
-          <label class="col-lg-8 control-label">Charge Station Is Level?</label>
-          <input type="checkbox" class="input-sm" name="{{"{{alliance}}"}}EndgameChargeStationLevel">
+          <label class="col-lg-8 control-label">Harmony?</label>
+          <input type="checkbox" class="input-sm" name="{{"{{alliance}}"}}EndgameHarmony">
         </div>
       </div>
     </fieldset>
@@ -194,23 +211,4 @@
   renderResults("red");
   renderResults("blue");
 </script>
-{{end}}
-{{define "gridRow"}}
-  <div class="row">
-    <label class="col-lg-1">{{.rowName}}</label>
-    {{range $i := seq 9}}
-      {{template "gridNode" dict "row" $.row "column" (add $i -1) "validNodeStates" $.validNodeStates}}
-    {{end}}
-  </div>
-  <br />
-{{end}}
-{{define "gridNode"}}
-  <div class="col-lg-1">
-    <input type="checkbox" class="" name="{{"{{alliance}}"}}GridAutoScoringRow{{.row}}Node{{.column}}"> Auto?
-    <select name="{{"{{alliance}}"}}GridNodeStatesRow{{.row}}Node{{.column}}" style="width: 90px; font-size: 11px;">
-      {{range $i, $nodeState := index .validNodeStates .row .column}}
-        <option value="{{nodeStateToInt $i}}">{{$nodeState}}</option>
-      {{end}}
-    </select>
-  </div>
 {{end}}

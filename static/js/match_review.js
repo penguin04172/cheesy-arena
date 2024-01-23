@@ -34,18 +34,17 @@ const renderResults = function(alliance) {
   for (let i = 0; i < 3; i++) {
     const i1 = i + 1;
 
-    getInputElement(alliance, "MobilityStatuses" + i1).prop("checked", result.score.MobilityStatuses[i]);
-    getInputElement(alliance, "AutoDockStatuses" + i1).prop("checked", result.score.AutoDockStatuses[i]);
+    getInputElement(alliance, "LeaveStatuses" + i1).prop("checked", result.score.LeaveStatuses[i]);
+    getInputElement(alliance, "TrapStatuses" + i1).prop("checked", result.score.TrapStatuses[i]);
     getInputElement(alliance, "EndgameStatuses" + i1, result.score.EndgameStatuses[i]).prop("checked", true);
-
-    for (let j = 0; j < 9; j++) {
-      getInputElement(alliance, `GridAutoScoringRow${i}Node${j}`).prop("checked", result.score.Grid.AutoScoring[i][j]);
-      getSelectElement(alliance, `GridNodeStatesRow${i}Node${j}`).val(result.score.Grid.Nodes[i][j]);
-    }
   }
 
-  getInputElement(alliance, "AutoChargeStationLevel").prop("checked", result.score.AutoChargeStationLevel);
-  getInputElement(alliance, "EndgameChargeStationLevel").prop("checked", result.score.EndgameChargeStationLevel);
+  getInputElement(alliance, "AutoNoteAmp").val(result.score.AutoNoteAmp);
+  getInputElement(alliance, "AutoNoteSpeaker").val(result.score.AutoNoteSpeaker);
+  getInputElement(alliance, "TeleopNoteAmp").val(result.score.TeleopNoteAmp);
+  getInputElement(alliance, "TeleopNoteSpeaker").val(result.score.TeleopNoteSpeaker);
+  getInputElement(alliance, "TeleopNoteAmplifiedSpeaker").val(result.score.TeleopNoteAmplifiedSpeaker);
+  getInputElement(alliance, "EndgameHarmony").prop("checked", result.score.EndgameHarmony);
 
   if (result.score.Fouls != null) {
     $.each(result.score.Fouls, function(k, v) {
@@ -70,27 +69,23 @@ const updateResults = function(alliance) {
     formData[v.name] = v.value;
   });
 
-  result.score.MobilityStatuses = [];
-  result.score.Grid = {AutoScoring: [], Nodes: []};
-  result.score.AutoDockStatuses = [];
+  result.score.LeaveStatuses = [];
+  result.score.TrapStatuses = [];
   result.score.EndgameStatuses = [];
   for (let i = 0; i < 3; i++) {
     const i1 = i + 1;
 
-    result.score.MobilityStatuses[i] = formData[alliance + "MobilityStatuses" + i1] === "on";
-    result.score.AutoDockStatuses[i] = formData[alliance + "AutoDockStatuses" + i1] === "on";
+    result.score.LeaveStatuses[i] = formData[alliance + "LeaveStatuses" + i1] === "on";
+    result.score.TrapStatuses[i] = formData[alliance + "TrapStatuses" + i1] === "on";
     result.score.EndgameStatuses[i] = parseInt(formData[alliance + "EndgameStatuses" + i1]);
-
-    result.score.Grid.AutoScoring[i] = [];
-    result.score.Grid.Nodes[i] = [];
-    for (let j = 0; j < 9; j++) {
-      result.score.Grid.AutoScoring[i][j] = formData[alliance + `GridAutoScoringRow${i}Node${j}`] === "on";
-      result.score.Grid.Nodes[i][j] = parseInt(formData[alliance + `GridNodeStatesRow${i}Node${j}`]);
-    }
   }
 
-  result.score.AutoChargeStationLevel = formData[alliance + "AutoChargeStationLevel"] === "on";
-  result.score.EndgameChargeStationLevel = formData[alliance + "EndgameChargeStationLevel"] === "on";
+  result.score.AutoNoteAmp = parseInt(formData[alliance + "AutoNoteAmp"]);
+  result.score.AutoNoteSpeaker = parseInt(formData[alliance + "AutoNoteSpeaker"]);
+  result.score.TeleopNoteAmp = parseInt(formData[alliance + "TeleopNoteAmp"]);
+  result.score.TeleopNoteSpeaker = parseInt(formData[alliance + "TeleopNoteSpeaker"]);
+  result.score.TeleopNoteAmplifiedSpeaker = parseInt(formData[alliance + "TeleopNoteAmplificationSpeaker"]);
+  result.score.EndgameHarmony = formData[alliance + "EndgameHarmony"] === "on";
 
   result.score.Fouls = [];
 

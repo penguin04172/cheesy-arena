@@ -569,6 +569,9 @@ func (arena *Arena) Update() {
 	enabled := false
 	sendDsPacket := false
 	matchTimeSec := arena.MatchTimeSec()
+	scoreChanged := false
+	scoreBlue := &arena.BlueRealtimeScore.CurrentScore
+	scoreRed := &arena.RedRealtimeScore.CurrentScore
 	switch arena.MatchState {
 	case PreMatch:
 		auto = true
@@ -624,16 +627,47 @@ func (arena *Arena) Update() {
 			enabled = true
 			sendDsPacket = true
 
-			arena.BlueRealtimeScore.CurrentScore.CoopertitionActive = true
-			arena.RedRealtimeScore.CurrentScore.CoopertitionActive = true
+			scoreBlue.CoopertitionActive = true
+			scoreRed.CoopertitionActive = true
+			arena.RealtimeScoreNotifier.Notify()
 		}
 	case TeleopPeriod:
 		auto = false
 		enabled = true
+		scoreChanged = false
 
 		if matchTimeSec-game.GetDurationToTeleopStart().Seconds() > float64(game.CoopertitionActiveDurationSec) && (arena.BlueRealtimeScore.CurrentScore.CoopertitionActive || arena.RedRealtimeScore.CurrentScore.CoopertitionActive) {
-			arena.BlueRealtimeScore.CurrentScore.CoopertitionActive = false
-			arena.RedRealtimeScore.CurrentScore.CoopertitionActive = false
+			scoreBlue.CoopertitionActive = false
+			scoreRed.CoopertitionActive = false
+			scoreChanged = true
+		}
+
+		if scoreRed.Amplification {
+			if matchTimeSec-arena.RedRealtimeScore.CurrentScore.AmplificationStartedTimeSec > float64(game.AmplificationDurationSec) {
+				scoreRed.Amplification = false
+				scoreRed.AmplificationRemainingDurationSec = 0
+				scoreRed.AccumulateNote = 0
+				scoreChanged = true
+			} else {
+				scoreRed.AmplificationRemainingDurationSec = float64(game.AmplificationDurationSec) + scoreRed.AmplificationStartedTimeSec - matchTimeSec
+				scoreChanged = true
+			}
+		}
+
+		if scoreBlue.Amplification {
+			if matchTimeSec-arena.RedRealtimeScore.CurrentScore.AmplificationStartedTimeSec > float64(game.AmplificationDurationSec) {
+				scoreBlue.Amplification = false
+				scoreBlue.AmplificationRemainingDurationSec = 0
+				scoreBlue.AccumulateNote = 0
+				scoreChanged = true
+			} else {
+				scoreBlue.AmplificationRemainingDurationSec = float64(game.AmplificationDurationSec) + scoreBlue.AmplificationStartedTimeSec - matchTimeSec
+				scoreChanged = true
+			}
+		}
+
+		if scoreChanged {
+			arena.RealtimeScoreNotifier.Notify()
 		}
 
 		if matchTimeSec >= game.GetDurationToTeleopEnd().Seconds() {

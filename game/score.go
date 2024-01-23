@@ -21,6 +21,7 @@ type Score struct {
 	Amplification                     bool
 	AmplifiedNoteCount                int
 	AmplificationRemainingDurationSec float64
+	AmplificationStartedTimeSec       float64
 	Fouls                             []Foul
 	PlayoffDq                         bool
 }
