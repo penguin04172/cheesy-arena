@@ -146,26 +146,48 @@ const handleRealtimeScore = function(data) {
   $("#" + redSide + "ScoreNumber").text(data.Red.ScoreSummary.Score - data.Red.ScoreSummary.EndgamePoints);
   $("#" + blueSide + "ScoreNumber").text(data.Blue.ScoreSummary.Score - data.Blue.ScoreSummary.EndgamePoints);
 
-  $("#" + redSide + "LinkNumerator").text(data.Red.ScoreSummary.NumLinks);
-  $("#" + redSide + "LinkDenominator").text(data.Red.ScoreSummary.NumLinksGoal);
-  $("#" + blueSide + "LinkNumerator").text(data.Blue.ScoreSummary.NumLinks);
-  $("#" + blueSide + "LinkDenominator").text(data.Blue.ScoreSummary.NumLinksGoal);
-  if (currentMatch.Type === matchTypePlayoff) {
-    $("#" + redSide + "LinkDenominator").hide();
-    $("#" + blueSide + "LinkDenominator").hide();
-    $(".link-splitter").hide();
-  } else {
-    $("#" + redSide + "LinkDenominator").show();
-    $("#" + blueSide + "LinkDenominator").show();
-    $(".link-splitter").show();
+  $("#" + redSide + "NoteNumerator").text(data.Red.ScoreSummary.NumNotes);
+  $("#" + redSide + "NoteDenominator").text(data.Red.ScoreSummary.NumNotesGoal);
+  $("#" + blueSide + "NoteNumerator").text(data.Blue.ScoreSummary.NumNotes);
+  $("#" + blueSide + "NoteDenominator").text(data.Blue.ScoreSummary.NumNotesGoal);
+
+  if (data.Red.Score.Amplification) {
+    $("#" + redSide + "Amplification").show();
+    $("#" + redSide + "AmplificationTime").text(parseInt(data.Red.Score.AmplificationRemainingDurationSec + 0.5))
+    $("#" + redSide + "AmplificationCount").text(4 - data.Red.Score.AmplifiedNoteCount)
+  }else {
+    $("#" + redSide + "Amplification").hide();
   }
 
-  fetch("/api/grid/red/svg")
-    .then(response => response.text())
-    .then(svg => $(`#${redSide}Grid`).html(svg));
-  fetch("/api/grid/blue/svg")
-    .then(response => response.text())
-    .then(svg => $(`#${blueSide}Grid`).html(svg));
+  if (data.Blue.Score.Amplification) {
+    $("#" + blueSide + "Amplification").show();
+    $("#" + blueSide + "AmplificationTime").text(parseInt(data.Blue.Score.AmplificationRemainingDurationSec + 0.5))
+    $("#" + blueSide + "AmplificationCount").text(4 - data.Blue.Score.AmplifiedNoteCount)
+  }else {
+    $("#" + blueSide + "Amplification").hide();
+  }
+
+  if (currentMatch.Type === matchTypePlayoff) {
+    $("#" + redSide + "NoteDenominator").hide();
+    $("#" + blueSide + "NoteDenominator").hide();
+    $(".note-splitter").hide();
+  } else {
+    $("#" + redSide + "NoteDenominator").show();
+    $("#" + blueSide + "NoteDenominator").show();
+    $(".note-splitter").show();
+
+    if (data.Red.Score.Coopertition) {
+      $("#" + redSide + "Coopertition").show();
+    }else {
+      $("#" + redSide + "Coopertition").hide();
+    }
+
+    if (data.Blue.Score.Coopertition) {
+      $("#" + blueSide + "Coopertition").show();
+    }else {
+      $("#" + blueSide + "Coopertition").hide();
+    }
+  }
 };
 
 // Handles a websocket message to populate the final score data.

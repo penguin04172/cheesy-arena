@@ -31,29 +31,39 @@
                 <img class="avatar" id="leftTeam3Avatar" src="" />
               </div>
               <div class="score-fields">
-                <div class="score-links">
+                <div class="score-bonus">
                   <div>
-                    <span id="leftLinkNumerator"></span>
-                    <span class="link-splitter">/</span>
-                    <span id="leftLinkDenominator"></span>
+                    <span id="leftNoteNumerator"></span>
+                    <span class="note-splitter">/</span>
+                    <span id="leftNoteDenominator"></span>
                   </div>
-                  <img class="link-icon" src="/static/img/link.svg" />
+                  <div>
+                    <img class="note-icon" src="/static/img/music-note.svg" />
+                    <img id="leftAmplification" class="note-icon" src="/static/img/amplified.svg" />
+                  </div>
                 </div>
-                <div class="score-grid" id="leftGrid"></div>
+                <div id="leftCoopertition" class="score-bonus">
+                  <img class="coopertition-icon" src="/static/img/handshake.svg" />
+                </div>
               </div>
               <div class="score-number" id="leftScoreNumber"></div>
             </div>
             <div class="score score-right reversible-right">
               <div class="score-number" id="rightScoreNumber"></div>
               <div class="score-fields">
-                <div class="score-grid" id="rightGrid"></div>
-                <div class="score-links">
+                <div id="rightCoopertition" class="score-bonus">
+                  <img class="coopertition-icon" src="/static/img/handshake.svg" />
+                </div>
+                <div class="score-bonus">
                   <div>
-                    <span id="rightLinkNumerator"></span>
-                    <span class="link-splitter">/</span>
-                    <span id="rightLinkDenominator"></span>
+                    <span id="rightNoteNumerator"></span>
+                    <span class="note-splitter">/</span>
+                    <span id="rightNoteDenominator"></span>
                   </div>
-                  <img class="link-icon" src="/static/img/link.svg" />
+                  <div>
+                    <img id="rightAmplification" class="note-icon" src="/static/img/amplified.svg" />
+                    <img class="note-icon" src="/static/img/music-note.svg" />
+                  </div>
                 </div>
               </div>
               <div class="avatars">
@@ -79,7 +89,7 @@
         <span id="leftPlayoffAllianceWins"></span>&nbsp;-&nbsp;<span id="rightPlayoffAllianceWins"></span>
       </div>
       <div class="text-center" id="matchCircle">
-        <img id="logo" src="/static/img/game-logo.png" alt="logo" />
+        <img id="logo" src="/static/img/game-logo.svg" alt="logo" />
         <div id="matchTime"></div>
       </div>
       <div id="timeoutDetails">
@@ -98,7 +108,7 @@
         <div class="blindsCenter blank"></div>
       </div>
       <div class="blindsCenter full">
-        <img id="blindsLogo" src="/static/img/game-logo.png" alt="logo" />
+        <img id="blindsLogo" src="/static/img/game-logo.svg" alt="logo" />
       </div>
       <div id="finalScoreCentering">
         <div id="finalScore">

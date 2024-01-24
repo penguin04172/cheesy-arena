@@ -4,13 +4,14 @@
 package web
 
 import (
+	"testing"
+	"time"
+
 	"github.com/Team254/cheesy-arena/field"
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/websocket"
 	gorillawebsocket "github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestScoringPanel(t *testing.T) {
@@ -55,12 +56,9 @@ func TestScoringPanelWebsocket(t *testing.T) {
 	readWebsocketType(t, blueWs, "realtimeScore")
 
 	// Send some autonomous period scoring commands.
-	assert.Equal(t, [3]bool{false, false, false}, web.arena.RedRealtimeScore.CurrentScore.MobilityStatuses)
+	assert.Equal(t, [3]bool{false, false, false}, web.arena.RedRealtimeScore.CurrentScore.LeaveStatuses)
 	scoringData := struct {
 		TeamPosition int
-		GridRow      int
-		GridNode     int
-		NodeState    game.NodeState
 	}{}
 	web.arena.MatchState = field.AutoPeriod
 	scoringData.TeamPosition = 1
@@ -107,10 +105,10 @@ func TestScoringPanelWebsocket(t *testing.T) {
 	assert.Equal(t, true, web.arena.BlueRealtimeScore.CurrentScore.Grid.AutoScoring[2][1])
 	assert.Equal(
 		t,
-		[3]game.EndgameStatus{game.EndgameNone, game.EndgameParked, game.EndgameDocked},
+		[3]game.EndgameStatus{game.EndgameNone, game.EndgameParked, game.EndgameOnstage},
 		web.arena.BlueRealtimeScore.CurrentScore.EndgameStatuses,
 	)
-	assert.Equal(t, true, web.arena.BlueRealtimeScore.CurrentScore.EndgameChargeStationLevel)
+	assert.Equal(t, true, web.arena.BlueRealtimeScore.CurrentScore.EndgameHarmony)
 
 	// Test committing logic.
 	redWs.Write("commitMatch", nil)

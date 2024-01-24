@@ -124,7 +124,7 @@ html {
   justify-content: space-evenly;
   opacity: 0;
 }
-.score-links {
+.score-bonus {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -156,12 +156,15 @@ html {
 #rightScoreAux {
   padding-left: 35px;
 }
-.link-splitter {
+.bonus-splitter {
   margin: 0 -4px;
 }
-.link-icon {
+.note-icon {
   margin-top: 5px;
   width: 25px;
+}
+.coopertition-icon {
+  width: 40px;
 }
 .score-grid {
   width: 70%;

@@ -113,6 +113,14 @@ body[data-position=right] #inMatch #blueScore {
   display: block;
   color: #07f;
 }
+body[data-position=up] #inMatch #redAmplifiedRemaining {
+  display: block;
+  color: #f43;
+}
+body[data-position=down] #inMatch #blueAmplifiedRemaining {
+  display: block;
+  color: #07f;
+}
 
 /* Pre Match */
 #preMatch #teamNumber {

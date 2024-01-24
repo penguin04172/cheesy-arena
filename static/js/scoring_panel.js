@@ -5,9 +5,12 @@
 
 var websocket;
 let alliance;
+let currentMatch;
+let currentState;
 
 // Handles a websocket message to update the teams for the current match.
 const handleMatchLoad = function(data) {
+  currentMatch = data.Match;
   $("#matchName").text(data.Match.LongName);
   if (alliance === "red") {
     $("#team1").text(data.Match.Red1);
@@ -22,6 +25,7 @@ const handleMatchLoad = function(data) {
 
 // Handles a websocket message to update the match status.
 const handleMatchTime = function(data) {
+  currentState = matchStates[data.MatchState];
   switch (matchStates[data.MatchState]) {
     case "PRE_MATCH":
       // Pre-match message state is set in handleRealtimeScore().
@@ -59,8 +63,8 @@ const handleRealtimeScore = function(data) {
 
   $("#accumulateNote>.value").text(score.AccumulateNote);
   $("#coopertitionStatus").attr("data-value", score.Coopertition);
-  $("#coopertitionBtn").attr('disabled', score.Coopertition || score.AccumulateNote < 1);
-  $("#amplificationRemain>.value").text(`${parseInt(score.AmplificationRemainingDurationSec+0.5)} / ${4 - score.AmplifiedNoteCount}`)
+  $("#coopertitionBtn").attr('disabled', score.Coopertition || !score.CoopertitionActive || score.AccumulateNote < 1 || currentMatch.Type === matchTypePlayoff);
+  $("#amplificationRemain>.value").text(`${parseInt(score.AmplificationRemainingDurationSec+0.5)} / ${score.AmplificationRemainingNote}`)
   $("#amplificationStatus").attr("data-value", score.Amplification);
   $("#amplificationBtn").attr('disabled', score.Amplification || score.AccumulateNote < 2);
   $("#endgameHarmony>.value").text(score.EndgameHarmony ? "Harmony" : "Not Harmony");

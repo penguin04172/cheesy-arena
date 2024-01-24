@@ -655,7 +655,7 @@ func (arena *Arena) Update() {
 		}
 
 		if scoreBlue.Amplification {
-			if matchTimeSec-arena.RedRealtimeScore.CurrentScore.AmplificationStartedTimeSec > float64(game.AmplificationDurationSec) {
+			if matchTimeSec-arena.BlueRealtimeScore.CurrentScore.AmplificationStartedTimeSec > float64(game.AmplificationDurationSec) {
 				scoreBlue.Amplification = false
 				scoreBlue.AmplificationRemainingDurationSec = 0
 				scoreBlue.AccumulateNote = 0

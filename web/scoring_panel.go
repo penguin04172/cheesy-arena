@@ -147,8 +147,8 @@ func (web *Web) scoringPanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 					case 5:
 						if score.Amplification {
 							incrementGoal(&score.TeleopNoteAmplifiedSpeaker)
-							incrementGoal(&score.AmplifiedNoteCount)
-							if score.AmplifiedNoteCount >= game.AmplificationNoteThreshold {
+							decrementGoal(&score.AmplificationRemainingNote)
+							if score.AmplificationRemainingNote == 0 {
 								score.Amplification = false
 								score.AmplificationRemainingDurationSec = 0
 								score.AccumulateNote = 0
@@ -176,7 +176,7 @@ func (web *Web) scoringPanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 						decrementGoal(&score.TeleopNoteSpeaker)
 					case 5:
 						decrementGoal(&score.TeleopNoteAmplifiedSpeaker)
-						decrementGoal(&score.AmplifiedNoteCount)
+						incrementGoal(&score.AmplificationRemainingNote)
 					}
 					scoreChanged = true
 				}
@@ -200,7 +200,7 @@ func (web *Web) scoringPanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 					score.Amplification = true
 					score.AmplificationStartedTimeSec = web.arena.MatchTimeSec()
 					score.AmplificationRemainingDurationSec = float64(game.AmplificationDurationSec)
-					score.AmplifiedNoteCount = 0
+					score.AmplificationRemainingNote = game.AmplificationNoteThreshold
 					score.AccumulateNote = 0
 					scoreChanged = true
 				}

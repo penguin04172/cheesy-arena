@@ -124,7 +124,7 @@ html {
   justify-content: space-evenly;
   opacity: 0;
 }
-.score-links {
+.score-bonus {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -133,21 +133,18 @@ html {
   font-size: 17px;
   color: #fff;
 }
-.link-splitter {
+.note-splitter {
   margin: 0 -4px;
 }
-.link-icon {
+.note-icon {
   margin-top: 5px;
   width: 25px;
 }
-.score-grid {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+.coopertition-icon {
+  margin: 0px;
+  height: 40px;
 }
-.score-grid svg {
-  height: 80%;
-}
+
 #matchCircle {
   position: absolute;
   top: -25px;

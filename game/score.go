@@ -19,7 +19,7 @@ type Score struct {
 	Coopertition                      bool
 	CoopertitionActive                bool
 	Amplification                     bool
-	AmplifiedNoteCount                int
+	AmplificationRemainingNote        int
 	AmplificationRemainingDurationSec float64
 	AmplificationStartedTimeSec       float64
 	Fouls                             []Foul
@@ -27,7 +27,7 @@ type Score struct {
 }
 
 var CoopertitionActiveDurationSec = 45
-var AmplificationDurationSec = 13
+var AmplificationDurationSec = 10
 var AmplificationNoteThreshold = 4
 var MelodyBonusThresholdWithoutCoop = 18
 var MelodyBonusThresholdWithCoop = 15

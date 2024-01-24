@@ -29,6 +29,12 @@ var handleAllianceStationDisplayMode = function(targetScreen) {
         case "3":
           body.attr("data-position", "left");
           break;
+        case "4":
+          body.attr("data-position", "up");
+          break;
+        case "5":
+          body.attr("data-position", "down");
+          break;
       }
     }
   }
@@ -127,6 +133,12 @@ var handleRealtimeScore = function(data) {
   $("#blueScore").text(
     data.Blue.ScoreSummary.Score - data.Blue.ScoreSummary.EndgamePoints
   );
+  $("#redAmplifiedRemaining").text(
+    `${parseInt(data.Red.Score.AmplificationRemainingDurationSec + 0.5)} / ${data.Red.Score.AmplificationRemainingNote}`
+  )
+  $("#blueAmplifiedRemaining").text(
+    `${parseInt(data.Blue.Score.AmplificationRemainingDurationSec + 0.5)} / ${data.Blue.Score.AmplificationRemainingNote}`
+  )
 };
 
 $(function() {
