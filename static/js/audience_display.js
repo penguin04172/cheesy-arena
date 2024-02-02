@@ -202,22 +202,22 @@ const handleScorePosted = function(data) {
   } else {
     setTeamInfo(redSide, 4, 0, data.RedRankings);
   }
-  $("#" + redSide + "FinalMobilityPoints").text(data.RedScoreSummary.MobilityPoints);
-  $("#" + redSide + "FinalGridPoints").text(data.RedScoreSummary.GridPoints);
-  $("#" + redSide + "FinalChargeStationPoints").text(data.RedScoreSummary.ChargeStationPoints);
-  $("#" + redSide + "FinalParkPoints").text(data.RedScoreSummary.ParkPoints);
+  $("#" + redSide + "FinalLeavePoints").text(data.RedScoreSummary.LeavePoints);
+  $("#" + redSide + "FinalNotePoints").text(data.RedScoreSummary.NotePoints);
+  $("#" + redSide + "FinalStagePoints").text(data.RedScoreSummary.StagePoints);
+  $("#" + redSide + "FinalTrapPoints").text(data.RedScoreSummary.TrapPoints);
   $("#" + redSide + "FinalFoulPoints").text(data.RedScoreSummary.FoulPoints);
-  $("#" + redSide + "FinalSustainabilityBonusRankingPoint").html(
-    data.RedScoreSummary.SustainabilityBonusRankingPoint ? "&#x2714;" : "&#x2718;"
+  $("#" + redSide + "FinalMelodyBonusRankingPoint").html(
+    data.RedScoreSummary.MelodyBonusRankingPoint ? "&#x2714;" : "&#x2718;"
   );
-  $("#" + redSide + "FinalSustainabilityBonusRankingPoint").attr(
-    "data-checked", data.RedScoreSummary.SustainabilityBonusRankingPoint
+  $("#" + redSide + "FinalMelodyBonusRankingPoint").attr(
+    "data-checked", data.RedScoreSummary.MelodyBonusRankingPoint
   );
-  $("#" + redSide + "FinalActivationBonusRankingPoint").html(
-    data.RedScoreSummary.ActivationBonusRankingPoint ? "&#x2714;" : "&#x2718;"
+  $("#" + redSide + "FinalEnsembleBonusRankingPoint").html(
+    data.RedScoreSummary.EnsembleBonusRankingPoint ? "&#x2714;" : "&#x2718;"
   );
-  $("#" + redSide + "FinalActivationBonusRankingPoint").attr(
-    "data-checked", data.RedScoreSummary.ActivationBonusRankingPoint
+  $("#" + redSide + "FinalEnsembleBonusRankingPoint").attr(
+    "data-checked", data.RedScoreSummary.EnsembleBonusRankingPoint
   );
   $("#" + redSide + "FinalRankingPoints").html(data.RedRankingPoints);
   $("#" + redSide + "FinalWins").text(data.RedWins);
@@ -236,22 +236,22 @@ const handleScorePosted = function(data) {
   } else {
     setTeamInfo(blueSide, 4, 0, data.BlueRankings);
   }
-  $("#" + blueSide + "FinalMobilityPoints").text(data.BlueScoreSummary.MobilityPoints);
-  $("#" + blueSide + "FinalGridPoints").text(data.BlueScoreSummary.GridPoints);
-  $("#" + blueSide + "FinalChargeStationPoints").text(data.BlueScoreSummary.ChargeStationPoints);
-  $("#" + blueSide + "FinalParkPoints").text(data.BlueScoreSummary.ParkPoints);
+  $("#" + blueSide + "FinalLeavePoints").text(data.BlueScoreSummary.LeavePoints);
+  $("#" + blueSide + "FinalNotePoints").text(data.BlueScoreSummary.NotePoints);
+  $("#" + blueSide + "FinalStagePoints").text(data.BlueScoreSummary.StagePoints);
+  $("#" + blueSide + "FinalTrapPoints").text(data.BlueScoreSummary.TrapPoints);
   $("#" + blueSide + "FinalFoulPoints").text(data.BlueScoreSummary.FoulPoints);
-  $("#" + blueSide + "FinalSustainabilityBonusRankingPoint").html(
-    data.BlueScoreSummary.SustainabilityBonusRankingPoint ? "&#x2714;" : "&#x2718;"
+  $("#" + blueSide + "FinalMelodyBonusRankingPoint").html(
+    data.BlueScoreSummary.MelodyBonusRankingPoint ? "&#x2714;" : "&#x2718;"
   );
-  $("#" + blueSide + "FinalSustainabilityBonusRankingPoint").attr(
-    "data-checked", data.BlueScoreSummary.SustainabilityBonusRankingPoint
+  $("#" + blueSide + "FinalMelodyBonusRankingPoint").attr(
+    "data-checked", data.BlueScoreSummary.MelodyBonusRankingPoint
   );
-  $("#" + blueSide + "FinalActivationBonusRankingPoint").html(
-    data.BlueScoreSummary.ActivationBonusRankingPoint ? "&#x2714;" : "&#x2718;"
+  $("#" + blueSide + "FinalEnsembleBonusRankingPoint").html(
+    data.BlueScoreSummary.EnsembleBonusRankingPoint ? "&#x2714;" : "&#x2718;"
   );
-  $("#" + blueSide + "FinalActivationBonusRankingPoint").attr(
-    "data-checked", data.BlueScoreSummary.ActivationBonusRankingPoint
+  $("#" + blueSide + "FinalEnsembleBonusRankingPoint").attr(
+    "data-checked", data.BlueScoreSummary.EnsembleBonusRankingPoint
   );
   $("#" + blueSide + "FinalRankingPoints").html(data.BlueRankingPoints);
   $("#" + blueSide + "FinalWins").text(data.BlueWins);

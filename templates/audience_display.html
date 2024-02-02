@@ -89,7 +89,7 @@
         <span id="leftPlayoffAllianceWins"></span>&nbsp;-&nbsp;<span id="rightPlayoffAllianceWins"></span>
       </div>
       <div class="text-center" id="matchCircle">
-        <img id="logo" src="/static/img/game-logo.svg" alt="logo" />
+        <img id="logo" src="/static/img/game-logo.png" alt="logo" />
         <div id="matchTime"></div>
       </div>
       <div id="timeoutDetails">
@@ -108,7 +108,7 @@
         <div class="blindsCenter blank"></div>
       </div>
       <div class="blindsCenter full">
-        <img id="blindsLogo" src="/static/img/game-logo.svg" alt="logo" />
+        <img id="blindsLogo" src="/static/img/game-logo.png" alt="logo" />
       </div>
       <div id="finalScoreCentering">
         <div id="finalScore">
@@ -136,14 +136,14 @@
               </div>
             </div>
             <div class="final-breakdown" id="leftFinalBreakdown">
-              <div id="leftFinalMobilityPoints"></div>
-              <div id="leftFinalGridPoints"></div>
-              <div id="leftFinalChargeStationPoints"></div>
-              <div id="leftFinalParkPoints"></div>
+              <div id="leftFinalLeavePoints"></div>
+              <div id="leftFinalNotePoints"></div>
+              <div id="leftFinalStagePoints"></div>
+              <div id="leftFinalTrapPoints"></div>
               <div id="leftFinalFoulPoints"></div>
               <div class="playoff-hidden-field">
-                <div id="leftFinalSustainabilityBonusRankingPoint"></div>
-                <div id="leftFinalActivationBonusRankingPoint"></div>
+                <div id="leftFinalMelodyBonusRankingPoint"></div>
+                <div id="leftFinalEnsembleBonusRankingPoint"></div>
                 <div id="leftFinalRankingPoints"></div>
               </div>
               <div class="playoff-only-field">
@@ -152,14 +152,14 @@
               </div>
             </div>
             <div class="final-breakdown" id="centerFinalBreakdown">
-              <div>Mobility</div>
-              <div>Grid</div>
-              <div>Charge Station</div>
-              <div>Park</div>
+              <div>Leave</div>
+              <div>Note</div>
+              <div>Stage Points</div>
+              <div>Trap</div>
               <div>Foul</div>
               <div class="playoff-hidden-field">
-                <div>Sustainability Bonus</div>
-                <div>Activation Bonus</div>
+                <div>Melody Bonus</div>
+                <div>Ensemble Bonus</div>
                 <div>Ranking Points</div>
               </div>
               <div class="playoff-only-field">
@@ -168,14 +168,14 @@
               </div>
             </div>
             <div class="final-breakdown" id="rightFinalBreakdown">
-              <div id="rightFinalMobilityPoints"></div>
-              <div id="rightFinalGridPoints"></div>
-              <div id="rightFinalChargeStationPoints"></div>
-              <div id="rightFinalParkPoints"></div>
+              <div id="rightFinalLeavePoints"></div>
+              <div id="rightFinalNotePoints"></div>
+              <div id="rightFinalStagePoints"></div>
+              <div id="rightFinalTrapPoints"></div>
               <div id="rightFinalFoulPoints"></div>
               <div class="playoff-hidden-field">
-                <div id="rightFinalSustainabilityBonusRankingPoint"></div>
-                <div id="rightFinalActivationBonusRankingPoint"></div>
+                <div id="rightFinalMelodyBonusRankingPoint"></div>
+                <div id="rightFinalEnsembleBonusRankingPoint"></div>
                 <div id="rightFinalRankingPoints"></div>
               </div>
               <div class="playoff-only-field">
@@ -229,7 +229,7 @@
       <table id="allianceSelectionTable">
         <tr>
           <td colspan="{{"{{numColumns}}"}}">
-            <img src="/static/img/alliance-selection-logo.png" alt="logo" />
+            <img src="/static/img/game-logo.png" alt="logo" />
           </td>
         </tr>
         {{"{{#each alliances}}"}}
