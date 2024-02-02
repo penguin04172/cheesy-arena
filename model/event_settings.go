@@ -38,6 +38,7 @@ type EventSettings struct {
 	Ap2Password                        string
 	Ap2TeamChannel                     int
 	SwitchAddress                      string
+	SwitchUsername                     string
 	SwitchPassword                     string
 	PlcAddress                         string
 	AdminPassword                      string

@@ -340,7 +340,7 @@ func (ap *AccessPoint) updateTeamWifiBTU() error {
 	if ap.isVividType {
 		interfaces = []string{"ath1", "ath11", "ath12", "ath13", "ath14", "ath15"}
 	} else {
-		interfaces = []string{"wlan0", "wlan0-1", "wlan0-2", "wlan0-3", "wlan0-4", "wlan0-5"}
+		interfaces = []string{"phy1-ap0", "phy1-ap1", "phy1-ap2", "phy1-ap3", "phy1-ap4", "phy1-ap5"}
 	}
 
 	for i := range ap.TeamWifiStatuses {

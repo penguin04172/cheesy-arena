@@ -6,15 +6,82 @@ package network
 import (
 	"bytes"
 	"fmt"
-	"github.com/Team254/cheesy-arena/model"
-	"github.com/stretchr/testify/assert"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/Team254/cheesy-arena/model"
+	"github.com/stretchr/testify/assert"
 )
 
+func TestGenerateTeamAccessPointConfigForOpenWRT(t *testing.T) {
+	model.BaseDir = ".."
+	sw := NewSwitch("127.0.0.1", "root", "password")
+
+	// Should reject invalid positions.
+	for _, position := range []int{-1, 0, 7, 8, 254} {
+		_, err := sw.generateTeamSwitchConfig(nil, position)
+		if assert.NotNil(t, err) {
+			assert.Equal(t, err.Error(), fmt.Sprintf("invalid vlan %d", position))
+		}
+	}
+
+	expectedResetCommand :=
+		"set network.vlan10.proto='none'\ndel network.vlan10.ipaddr\ndel network.vlan10.netmask\nset dhcp.vlan10.ignore='1'\n" +
+			"set network.vlan20.proto='none'\ndel network.vlan20.ipaddr\ndel network.vlan20.netmask\nset dhcp.vlan20.ignore='1'\n" +
+			"set network.vlan30.proto='none'\ndel network.vlan30.ipaddr\ndel network.vlan30.netmask\nset dhcp.vlan30.ignore='1'\n" +
+			"set network.vlan40.proto='none'\ndel network.vlan40.ipaddr\ndel network.vlan40.netmask\nset dhcp.vlan40.ignore='1'\n" +
+			"set network.vlan50.proto='none'\ndel network.vlan50.ipaddr\ndel network.vlan50.netmask\nset dhcp.vlan50.ignore='1'\n" +
+			"set network.vlan60.proto='none'\ndel network.vlan60.ipaddr\ndel network.vlan60.netmask\nset dhcp.vlan60.ignore='1'\n"
+
+	// Should remove all previous VLANs and do nothing else if current configuration is blank.
+	removeTeamVlansCommand := ""
+	for vlan := 10; vlan <= 60; vlan += 10 {
+		command, _ := sw.generateTeamSwitchConfig(nil, vlan)
+		removeTeamVlansCommand += command
+	}
+	assert.Equal(t, expectedResetCommand, removeTeamVlansCommand)
+
+	// Should configure one team if only one is present.
+	teams := [6]*model.Team{nil, nil, nil, nil, {Id: 254}, nil}
+	addTeamVlansCommand := ""
+	for vlan := 0; vlan < 6; vlan++ {
+		if teams[vlan] == nil {
+			continue
+		}
+		command, _ := sw.generateTeamSwitchConfig(teams[vlan], (vlan+1)*10)
+		addTeamVlansCommand += command
+	}
+	assert.Equal(
+		t,
+		"set network.vlan50.proto='static'\n"+
+			"set network.vlan50.ipaddr='10.2.54.4'\n"+
+			"set network.vlan50.netmask='255.255.255.0'\n"+
+			"set dhcp.vlan50.ignore='0'\n",
+		addTeamVlansCommand,
+	)
+
+	// Should configure all teams if all are present.
+	teams = [6]*model.Team{{Id: 1114}, {Id: 254}, {Id: 296}, {Id: 1503}, {Id: 1678}, {Id: 1538}}
+	addTeamVlansCommand = ""
+	for vlan := 0; vlan < 6; vlan++ {
+		command, _ := sw.generateTeamSwitchConfig(teams[vlan], (vlan+1)*10)
+		addTeamVlansCommand += command
+	}
+	assert.Equal(
+		t,
+		"set network.vlan10.proto='static'\nset network.vlan10.ipaddr='10.11.14.4'\nset network.vlan10.netmask='255.255.255.0'\nset dhcp.vlan10.ignore='0'\n"+
+			"set network.vlan20.proto='static'\nset network.vlan20.ipaddr='10.2.54.4'\nset network.vlan20.netmask='255.255.255.0'\nset dhcp.vlan20.ignore='0'\n"+
+			"set network.vlan30.proto='static'\nset network.vlan30.ipaddr='10.2.96.4'\nset network.vlan30.netmask='255.255.255.0'\nset dhcp.vlan30.ignore='0'\n"+
+			"set network.vlan40.proto='static'\nset network.vlan40.ipaddr='10.15.3.4'\nset network.vlan40.netmask='255.255.255.0'\nset dhcp.vlan40.ignore='0'\n"+
+			"set network.vlan50.proto='static'\nset network.vlan50.ipaddr='10.16.78.4'\nset network.vlan50.netmask='255.255.255.0'\nset dhcp.vlan50.ignore='0'\n"+
+			"set network.vlan60.proto='static'\nset network.vlan60.ipaddr='10.15.38.4'\nset network.vlan60.netmask='255.255.255.0'\nset dhcp.vlan60.ignore='0'\n",
+		addTeamVlansCommand,
+	)
+}
+
 func TestConfigureSwitch(t *testing.T) {
-	sw := NewSwitch("127.0.0.1", "password")
+	sw := NewSwitch("127.0.0.1", "root", "password")
 	sw.port = 9050
 	sw.configBackoffDuration = time.Millisecond
 	sw.configPauseDuration = time.Millisecond

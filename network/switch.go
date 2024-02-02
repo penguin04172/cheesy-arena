@@ -1,25 +1,22 @@
-// Copyright 2014 Team 254. All Rights Reserved.
-// Author: pat@patfairbank.com (Patrick Fairbank)
-//
-// Methods for configuring a Cisco Switch 3500-series switch for team VLANs.
-
 package network
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
-	"github.com/Team254/cheesy-arena/model"
-	"net"
-	"sync"
 	"time"
+
+	"github.com/Team254/cheesy-arena/model"
+	"golang.org/x/crypto/ssh"
 )
 
 const (
+	switchSshPort                  = 22
+	switchConnectTimeoutSec        = 1
+	switchCommandTimeoutSec        = 30
+	switchPollPeriodSec            = 3
+	switchRequestBufferSize        = 10
+	switchConfigRetryIntervalSec   = 30
 	switchConfigBackoffDurationSec = 5
 	switchConfigPauseDurationSec   = 2
-	switchTeamGatewayAddress       = 4
-	switchTelnetPort               = 23
 )
 
 const (
@@ -34,77 +31,83 @@ const (
 type Switch struct {
 	address               string
 	port                  int
+	username              string
 	password              string
-	mutex                 sync.Mutex
 	configBackoffDuration time.Duration
 	configPauseDuration   time.Duration
 }
 
 var ServerIpAddress = "10.0.100.5" // The DS will try to connect to this address only.
 
-func NewSwitch(address, password string) *Switch {
+func NewSwitch(address, username, password string) *Switch {
 	return &Switch{
 		address:               address,
-		port:                  switchTelnetPort,
+		port:                  switchSshPort,
+		username:              username,
 		password:              password,
 		configBackoffDuration: switchConfigBackoffDurationSec * time.Second,
 		configPauseDuration:   switchConfigPauseDurationSec * time.Second,
 	}
 }
 
-// Sets up wired networks for the given set of teams.
-func (sw *Switch) ConfigureTeamEthernet(teams [6]*model.Team) error {
-	// Make sure multiple configurations aren't being set at the same time.
-	sw.mutex.Lock()
-	defer sw.mutex.Unlock()
+func (sw *Switch) generateTeamSwitchConfig(team *model.Team, vlan int) (string, error) {
+	if vlan != 10 && vlan != 20 && vlan != 30 && vlan != 40 && vlan != 50 && vlan != 60 {
+		return "", fmt.Errorf("invalid vlan %d", vlan)
+	}
 
+	command := ""
+	if team == nil {
+		command += fmt.Sprintf(
+			"set network.vlan%d.proto='none'\n"+
+				"del network.vlan%d.ipaddr\n"+
+				"del network.vlan%d.netmask\n"+
+				"set dhcp.vlan%d.ignore='1'\n",
+			vlan, vlan, vlan, vlan,
+		)
+	} else {
+		teamPartialIp := fmt.Sprintf("%d.%d", team.Id/100, team.Id%100)
+		command += fmt.Sprintf(
+			"set network.vlan%d.proto='static'\n"+
+				"set network.vlan%d.ipaddr='10.%s.4'\n"+
+				"set network.vlan%d.netmask='255.255.255.0'\n"+
+				"set dhcp.vlan%d.ignore='0'\n",
+			vlan,
+			vlan,
+			teamPartialIp,
+			vlan,
+			vlan,
+		)
+	}
+	return command, nil
+}
+
+func (sw *Switch) ConfigureTeamEthernet(teams [6]*model.Team) error {
 	// Remove old team VLANs to reset the switch state.
 	removeTeamVlansCommand := ""
 	for vlan := 10; vlan <= 60; vlan += 10 {
-		removeTeamVlansCommand += fmt.Sprintf(
-			"interface Vlan%d\nno ip address\nno access-list 1%d\nno ip dhcp pool dhcp%d\n", vlan, vlan, vlan,
-		)
+		command, _ := sw.generateTeamSwitchConfig(nil, vlan)
+		removeTeamVlansCommand += command
 	}
 	_, err := sw.runConfigCommand(removeTeamVlansCommand)
 	if err != nil {
 		return err
 	}
+	_, _ = sw.runCommand("uci commit network\n")
+	_, _ = sw.runCommand("uci commit dhcp\n")
+	_, _ = sw.runCommand("service network restart\n")
+	_, _ = sw.runCommand("service dnsmasq restart\n")
+	_, _ = sw.runCommand("service odhcpd restart\n")
 	time.Sleep(sw.configPauseDuration)
 
-	// Create the new team VLANs.
 	addTeamVlansCommand := ""
 	addTeamVlan := func(team *model.Team, vlan int) {
 		if team == nil {
 			return
 		}
-		teamPartialIp := fmt.Sprintf("%d.%d", team.Id/100, team.Id%100)
-		addTeamVlansCommand += fmt.Sprintf(
-			"ip dhcp excluded-address 10.%s.1 10.%s.19\n"+
-				"ip dhcp excluded-address 10.%s.200 10.%s.254\n"+
-				"ip dhcp pool dhcp%d\n"+
-				"network 10.%s.0 255.255.255.0\n"+
-				"default-router 10.%s.%d\n"+
-				"lease 7\n"+
-				"access-list 1%d permit ip 10.%s.0 0.0.0.255 host %s\n"+
-				"access-list 1%d permit udp any eq bootpc any eq bootps\n"+
-				"interface Vlan%d\nip address 10.%s.%d 255.255.255.0\n",
-			teamPartialIp,
-			teamPartialIp,
-			teamPartialIp,
-			teamPartialIp,
-			vlan,
-			teamPartialIp,
-			teamPartialIp,
-			switchTeamGatewayAddress,
-			vlan,
-			teamPartialIp,
-			ServerIpAddress,
-			vlan,
-			vlan,
-			teamPartialIp,
-			switchTeamGatewayAddress,
-		)
+		command, _ := sw.generateTeamSwitchConfig(team, vlan)
+		addTeamVlansCommand += command
 	}
+
 	addTeamVlan(teams[0], red1Vlan)
 	addTeamVlan(teams[1], red2Vlan)
 	addTeamVlan(teams[2], red3Vlan)
@@ -116,47 +119,53 @@ func (sw *Switch) ConfigureTeamEthernet(teams [6]*model.Team) error {
 		if err != nil {
 			return err
 		}
+		_, _ = sw.runCommand("uci commit network\n")
+		_, _ = sw.runCommand("uci commit dhcp\n")
+		_, _ = sw.runCommand("service network restart\n")
+		_, _ = sw.runCommand("service dnsmasq restart\n")
+		_, _ = sw.runCommand("service odhcpd restart\n")
 	}
 
 	// Give some time for the configuration to take before another one can be attempted.
 	time.Sleep(sw.configBackoffDuration)
-
 	return nil
 }
 
-// Logs into the switch via Telnet and runs the given command in user exec mode. Reads the output and
-// returns it as a string.
+// Logs into the access point via SSH and runs the given shell command.
 func (sw *Switch) runCommand(command string) (string, error) {
-	// Open a Telnet connection to the switch.
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", sw.address, sw.port))
+	// Open an SSH connection to the sw.
+	config := &ssh.ClientConfig{User: sw.username,
+		Auth:            []ssh.AuthMethod{ssh.Password(sw.password)},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         switchConnectTimeoutSec * time.Second}
+
+	conn, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", sw.address, switchSshPort), config)
 	if err != nil {
 		return "", err
 	}
+	session, err := conn.NewSession()
+	if err != nil {
+		return "", err
+	}
+	defer session.Close()
 	defer conn.Close()
 
-	// Login to the AP, send the command, and log out all at once.
-	writer := bufio.NewWriter(conn)
-	_, err = writer.WriteString(fmt.Sprintf("%s\nenable\n%s\nterminal length 0\n%sexit\n", sw.password, sw.password,
-		command))
-	if err != nil {
-		return "", err
+	// Run the command with a timeout.
+	commandChan := make(chan sshOutput, 1)
+	go func() {
+		outputBytes, err := session.Output(command)
+		commandChan <- sshOutput{string(outputBytes), err}
+	}()
+	select {
+	case output := <-commandChan:
+		return output.output, output.err
+	case <-time.After(switchCommandTimeoutSec * time.Second):
+		return "", fmt.Errorf("WiFi SSH command timed out after %d seconds", switchCommandTimeoutSec)
 	}
-	err = writer.Flush()
-	if err != nil {
-		return "", err
-	}
-
-	// Read the response.
-	var reader bytes.Buffer
-	_, err = reader.ReadFrom(conn)
-	if err != nil {
-		return "", err
-	}
-	return reader.String(), nil
 }
 
 // Logs into the switch via Telnet and runs the given command in global configuration mode. Reads the output
 // and returns it as a string.
 func (sw *Switch) runConfigCommand(command string) (string, error) {
-	return sw.runCommand(fmt.Sprintf("config terminal\n%send\ncopy running-config startup-config\n\n", command))
+	return sw.runCommand(addConfigurationHeader(command))
 }
