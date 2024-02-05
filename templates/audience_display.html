@@ -110,6 +110,46 @@
       <div class="blindsCenter full">
         <img id="blindsLogo" src="/static/img/game-logo.png" alt="logo" />
       </div>
+      <div id="matchLoadCentering">
+        <div id="matchLoad">
+          <div class="match-load-row">
+            <div class="match-load-col">
+              <div class="match-load-data">
+                {{.EventSettings.Name}}
+              </div>
+            </div>
+            <div class="match-load-col">
+              <div class="match-load-data" id="loadMatchName">
+                &nbsp;
+              </div>
+            </div>
+          </div>
+          <div class="match-load-row">
+            <div class="match-load-col reversible-left">
+              {{range $i := seq 3}}
+              <div class="match-load-team-row">
+                <img class="match-load-avatar" id="leftLoadTeam{{$i}}Avatar" src="" />
+                <div class="match-load-number" id="leftLoadTeam{{$i}}"></div>
+                <div class="match-load-rank">
+                  <div id="leftLoadTeam{{$i}}RankNumber"></div>
+                </div>
+              </div>
+              {{end}}
+            </div>
+            <div class="match-load-col reversible-right">
+              {{range $i := seq 3}}
+              <div class="match-load-team-row">
+                <img class="match-load-avatar" id="rightLoadTeam{{$i}}Avatar" src="" />
+                <div class="match-load-number" id="rightLoadTeam{{$i}}"></div>
+                <div class="match-load-rank">
+                  <div id="rightLoadTeam{{$i}}RankNumber"></div>
+                </div>
+              </div>
+              {{end}}
+            </div>
+          </div>
+        </div>
+      </div>
       <div id="finalScoreCentering">
         <div id="finalScore">
           <div class="final-score-row">

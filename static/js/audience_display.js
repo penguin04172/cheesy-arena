@@ -33,6 +33,8 @@ const scoreMid = "185px";
 const scoreOut = "425px";
 const scoreFieldsOut = "210px";
 const scoreLogoTop = "-450px";
+const loadLogoScale = 0.8;
+const loadLogoTop = "-600px";
 const bracketLogoTop = "-780px";
 const bracketLogoScale = 0.75;
 const timeoutDetailsIn = $("#timeoutDetails").css("width");
@@ -99,6 +101,13 @@ const handleMatchLoad = function(data) {
   $("#" + blueSide + "Team2Avatar").attr("src", getAvatarUrl(currentMatch.Blue2));
   $("#" + blueSide + "Team3Avatar").attr("src", getAvatarUrl(currentMatch.Blue3));
 
+  setTeamLoad(redSide, 1, currentMatch.Red1, data.Rankings);
+  setTeamLoad(redSide, 2, currentMatch.Red2, data.Rankings);
+  setTeamLoad(redSide, 3, currentMatch.Red3, data.Rankings);
+  setTeamLoad(blueSide, 1, currentMatch.Blue1, data.Rankings);
+  setTeamLoad(blueSide, 2, currentMatch.Blue2, data.Rankings);
+  setTeamLoad(blueSide, 3, currentMatch.Blue3, data.Rankings);
+
   // Show alliance numbers if this is a playoff match.
   if (currentMatch.Type === matchTypePlayoff) {
     $("#" + redSide + "PlayoffAlliance").text(currentMatch.PlayoffRedAlliance);
@@ -125,6 +134,7 @@ const handleMatchLoad = function(data) {
     matchName += " &ndash; " + data.Match.NameDetail;
   }
   $("#matchName").html(matchName);
+  $("#loadMatchName").html(matchName);
   $("#timeoutNextMatchName").html(matchName);
   $("#timeoutBreakDescription").text(data.BreakDescription);
 };
@@ -390,6 +400,12 @@ const transitionBlankToMatch = function(callback) {
   });
 };
 
+const transitionBlankToLoad = function(callback) {
+  transitionBlankToLogo(function() {
+    setTimeout(function() { transitionLogoToLoad(callback); }, 50);
+  });
+};
+
 const transitionBlankToScore = function(callback) {
   transitionBlankToLogo(function() {
     setTimeout(function() { transitionLogoToScore(callback); }, 50);
@@ -422,6 +438,15 @@ const transitionBlankToTimeout = function(callback) {
 const transitionBracketToBlank = function(callback) {
   transitionBracketToLogo(function() {
     transitionLogoToBlank(callback);
+  });
+};
+
+const transitionBracketToLoad = function(callback) {
+  $(".blindsCenter.full").transition({queue: false, top: loadLogoTop, scale: loadLogoScale}, 1000, "ease");
+  $("#bracket").transition({queue: false, opacity: 0}, 1000, "ease", function(){
+    $("#bracket").hide();
+    $("#matchLoad").show();
+    $("#matchLoad").transition({queue: false, opacity: 1}, 1000, "ease", callback);
   });
 };
 
@@ -524,6 +549,12 @@ const transitionLogoToLogoLuma = function(callback) {
   });
 };
 
+const transitionLogoToLoad = function(callback) {
+  $(".blindsCenter.full").transition({queue: false, top: loadLogoTop, scale: loadLogoScale}, 625, "ease");
+  $("#matchLoad").show();
+  $("#matchLoad").transition({queue: false, opacity: 1}, 1000, "ease", callback);
+};
+
 const transitionLogoToScore = function(callback) {
   $(".blindsCenter.full").transition({queue: false, top: scoreLogoTop}, 625, "ease");
   $("#finalScore").show();
@@ -558,9 +589,55 @@ const transitionLogoLumaToLogo = function(callback) {
   });
 };
 
+const transitionLogoLumaToLoad = function(callback) {
+  transitionLogoLumaToLogo(function() {
+    transitionLogoToLoad(callback);
+  });
+};
+
 const transitionLogoLumaToScore = function(callback) {
   transitionLogoLumaToLogo(function() {
     transitionLogoToScore(callback);
+  });
+};
+
+const transitionLoadToBlank = function(callback) {
+  transitionLoadToLogo(function () {
+    transitionLogoToBlank(callback);
+  })
+};
+
+const transitionLoadToBracket = function(callback) {
+  $(".blindsCenter.full").transition({queue: false, top: bracketLogoTop, scale: bracketLogoScale}, 1000, "ease");
+  $("#matchLoad").transition({queue: false, opacity: 0}, 1000, "ease", function(){
+    $("#matchLoad").hide();
+    $("#bracket").show();
+    $("#bracket").transition({queue: false, opacity: 1}, 1000, "ease", callback);
+  });
+};
+
+const transitionLoadToLogo = function(callback) {
+  $("#matchLoad").transition({queue: false, opacity: 0}, 500, "ease", function(){
+    $("#matchLoad").hide();
+  });
+  $(".blindsCenter.full").transition({queue: false, top: 0, scale: 1}, 625, "ease", callback);
+};
+
+const transitionLoadToLogoLuma = function(callback) {
+  transitionLoadToLogo(function() {
+    transitionLogoToLogoLuma(callback);
+  });
+};
+
+const transitionLoadToScore = function(callback) {
+  transitionLoadToLogo(function() {
+    transitionLogoToScore(callback);
+  });
+};
+
+const transitionLoadToSponsor = function(callback) {
+  transitionLoadToLogo(function() {
+    transitionLogoToSponsor(callback);
   });
 };
 
@@ -609,6 +686,12 @@ const transitionScoreToBracket = function(callback) {
   });
 };
 
+const transitionScoreToLoad = function(callback) {
+  transitionScoreToLogo(function() {
+    transitionLogoToLoad(callback);
+  });
+};
+
 const transitionScoreToLogo = function(callback) {
   $("#finalScore").transition({queue: false, opacity: 0}, 500, "ease", function(){
     $("#finalScore").hide();
@@ -650,6 +733,12 @@ const transitionSponsorToLogo = function(callback) {
   $("#sponsor").transition({queue: false, opacity: 0}, 1000, "ease", function() {
     $(".blindsCenter.full").transition({queue: false, rotateY: "0deg"}, 750, "ease", callback);
     $("#sponsor").hide();
+  });
+};
+
+const transitionSponsorToLoad = function(callback) {
+  transitionSponsorToLogo(function() {
+    transitionLogoToLoad(callback);
   });
 };
 
@@ -761,6 +850,25 @@ const setTeamInfo = function(side, position, teamId, rankings) {
   rankNumberElement.toggle(teamId > 0);
 };
 
+const setTeamLoad = function(side, position, teamId, rankings) {
+  const teamNumberElement = $(`#${side}LoadTeam${position}`);
+  teamNumberElement.html(teamId);
+  teamNumberElement.toggle(teamId > 0);
+  const avatarElement = $(`#${side}LoadTeam${position}Avatar`);
+  avatarElement.attr("src", getAvatarUrl(teamId));
+  avatarElement.toggle(teamId > 0);
+
+  const ranking = rankings[teamId];
+  let rankNumber = "";
+  if (ranking !== undefined && ranking !== null && ranking.Rank !== 0) {
+    rankNumber = ranking.Rank;
+  }
+
+  const rankNumberElement = $(`#${side}LoadTeam${position}RankNumber`);
+  rankNumberElement.text(rankNumber);
+  rankNumberElement.toggle(teamId > 0);
+};
+
 $(function() {
   // Read the configuration for this display from the URL query string.
   const urlParams = new URLSearchParams(window.location.search);
@@ -809,6 +917,7 @@ $(function() {
       intro: transitionBlankToIntro,
       logo: transitionBlankToLogo,
       logoLuma: transitionBlankToLogoLuma,
+      load: transitionBlankToLoad,
       match: transitionBlankToMatch,
       score: transitionBlankToScore,
       sponsor: transitionBlankToSponsor,
@@ -816,6 +925,7 @@ $(function() {
     },
     bracket: {
       blank: transitionBracketToBlank,
+      load: transitionBracketToLoad,
       logo: transitionBracketToLogo,
       logoLuma: transitionBracketToLogoLuma,
       score: transitionBracketToScore,
@@ -826,10 +936,19 @@ $(function() {
       match: transitionIntroToMatch,
       timeout: transitionIntroToTimeout,
     },
+    load: {
+      blank: transitionLoadToBlank,
+      bracket: transitionLoadToBracket,
+      logo: transitionLoadToLogo,
+      logoLuma: transitionLoadToLogoLuma,
+      score: transitionLoadToScore,
+      sponsor: transitionLoadToSponsor,
+    },
     logo: {
       blank: transitionLogoToBlank,
       bracket: transitionLogoToBracket,
       logoLuma: transitionLogoToLogoLuma,
+      load: transitionLogoToLoad,
       score: transitionLogoToScore,
       sponsor: transitionLogoToSponsor,
     },
@@ -837,6 +956,7 @@ $(function() {
       blank: transitionLogoLumaToBlank,
       bracket: transitionLogoLumaToBracket,
       logo: transitionLogoLumaToLogo,
+      load: transitionLogoLumaToLoad,
       score: transitionLogoLumaToScore,
     },
     match: {
@@ -846,6 +966,7 @@ $(function() {
     score: {
       blank: transitionScoreToBlank,
       bracket: transitionScoreToBracket,
+      load: transitionScoreToLoad,
       logo: transitionScoreToLogo,
       logoLuma: transitionScoreToLogoLuma,
       sponsor: transitionScoreToSponsor,
@@ -854,6 +975,7 @@ $(function() {
       blank: transitionSponsorToBlank,
       bracket: transitionSponsorToBracket,
       logo: transitionSponsorToLogo,
+      load: transitionSponsorToLoad,
       score: transitionSponsorToScore,
     },
     timeout: {
