@@ -176,7 +176,9 @@ func (web *Web) scoringPanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 						decrementGoal(&score.TeleopNoteSpeaker)
 					case 5:
 						decrementGoal(&score.TeleopNoteAmplifiedSpeaker)
-						incrementGoal(&score.AmplificationRemainingNote)
+						if score.TeleopNoteAmplifiedSpeaker > 0 {
+							incrementGoal(&score.AmplificationRemainingNote)
+						}
 					}
 					scoreChanged = true
 				}
