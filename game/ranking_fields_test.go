@@ -4,35 +4,38 @@
 package game
 
 import (
-	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"sort"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAddScoreSummary(t *testing.T) {
 	rand.Seed(0)
 	redSummary := &ScoreSummary{
-		LeavePoints:               4,
-		AutoPoints:                30,
-		StagePoints:               19,
-		MatchPoints:               67,
-		Score:                     67,
-		CoopertitionBonus:         false,
-		MelodyBonusRankingPoint:   false,
-		EnsembleBonusRankingPoint: true,
-		BonusRankingPoints:        1,
+		LeavePoints:            4,
+		AutoPoints:             30,
+		BargePoints:            19,
+		MatchPoints:            67,
+		Score:                  67,
+		CoopertitionBonus:      false,
+		AutoBonusRankingPoint:  true,
+		CoralBonusRankingPoint: false,
+		BargeBonusRankingPoint: true,
+		BonusRankingPoints:     1,
 	}
 	blueSummary := &ScoreSummary{
-		LeavePoints:               2,
-		AutoPoints:                16,
-		StagePoints:               14,
-		MatchPoints:               61,
-		Score:                     81,
-		CoopertitionBonus:         true,
-		MelodyBonusRankingPoint:   true,
-		EnsembleBonusRankingPoint: false,
-		BonusRankingPoints:        1,
+		LeavePoints:            2,
+		AutoPoints:             16,
+		BargePoints:            14,
+		MatchPoints:            61,
+		Score:                  81,
+		CoopertitionBonus:      true,
+		AutoBonusRankingPoint:  false,
+		CoralBonusRankingPoint: true,
+		BargeBonusRankingPoint: false,
+		BonusRankingPoints:     1,
 	}
 	rankingFields := RankingFields{}
 

@@ -4,13 +4,14 @@
 package web
 
 import (
+	"testing"
+	"time"
+
 	"github.com/Team254/cheesy-arena/field"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/Team254/cheesy-arena/websocket"
 	gorillawebsocket "github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestRefereePanel(t *testing.T) {
@@ -51,15 +52,15 @@ func TestRefereePanelWebsocket(t *testing.T) {
 	readWebsocketType(t, ws, "realtimeScore")
 	readWebsocketType(t, ws, "realtimeScore")
 	if assert.Equal(t, 2, len(web.arena.RedRealtimeScore.CurrentScore.Fouls)) {
-		assert.Equal(t, true, web.arena.RedRealtimeScore.CurrentScore.Fouls[0].IsTechnical)
+		assert.Equal(t, true, web.arena.RedRealtimeScore.CurrentScore.Fouls[0].IsMajor)
 		assert.Equal(t, 0, web.arena.RedRealtimeScore.CurrentScore.Fouls[0].TeamId)
 		assert.Equal(t, 0, web.arena.RedRealtimeScore.CurrentScore.Fouls[0].RuleId)
-		assert.Equal(t, false, web.arena.RedRealtimeScore.CurrentScore.Fouls[1].IsTechnical)
+		assert.Equal(t, false, web.arena.RedRealtimeScore.CurrentScore.Fouls[1].IsMajor)
 		assert.Equal(t, 0, web.arena.RedRealtimeScore.CurrentScore.Fouls[1].TeamId)
 		assert.Equal(t, 0, web.arena.RedRealtimeScore.CurrentScore.Fouls[1].RuleId)
 	}
 	if assert.Equal(t, 1, len(web.arena.BlueRealtimeScore.CurrentScore.Fouls)) {
-		assert.Equal(t, false, web.arena.BlueRealtimeScore.CurrentScore.Fouls[0].IsTechnical)
+		assert.Equal(t, false, web.arena.BlueRealtimeScore.CurrentScore.Fouls[0].IsMajor)
 		assert.Equal(t, 0, web.arena.BlueRealtimeScore.CurrentScore.Fouls[0].TeamId)
 		assert.Equal(t, 0, web.arena.BlueRealtimeScore.CurrentScore.Fouls[0].RuleId)
 	}
@@ -77,7 +78,7 @@ func TestRefereePanelWebsocket(t *testing.T) {
 	modifyFoulData.Index = 1
 	ws.Write("toggleFoulType", modifyFoulData)
 	readWebsocketType(t, ws, "realtimeScore")
-	assert.Equal(t, true, web.arena.RedRealtimeScore.CurrentScore.Fouls[1].IsTechnical)
+	assert.Equal(t, true, web.arena.RedRealtimeScore.CurrentScore.Fouls[1].IsMajor)
 	modifyFoulData.Index = 0
 	modifyFoulData.TeamId = 256
 	ws.Write("updateFoulTeam", modifyFoulData)

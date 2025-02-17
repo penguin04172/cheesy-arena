@@ -1,32 +1,24 @@
-// Copyright 2023 Team 254. All Rights Reserved.
-// Author: pat@patfairbank.com (Patrick Fairbank)
-//
-// Model representing the instantaneous score of a match.
-
 package game
 
 type Score struct {
-	LeaveStatuses      [3]bool
-	AmpSpeaker         AmpSpeaker
-	EndgameStatuses    [3]EndgameStatus
-	MicrophoneStatuses [3]bool
-	TrapStatuses       [3]bool
-	Fouls              []Foul
-	PlayoffDq          bool
+	LeaveStatuses   [3]bool
+	CoralAlgae      CoralAlgae
+	EndgameStatuses [3]EndgameStatus
+	Fouls           []Foul
+	PlayoffDq       bool
 }
 
 // Game-specific constants that cannot be changed by the user.
 const (
-	bankedAmpNoteLimit          = 2
-	ensembleBonusPointThreshold = 10
-	ensembleBonusRobotThreshold = 2
+	coralBonusCountThreshold = 5
+	autoBonusPointThreshold  = 1
+	autoBonusRobotThreshold  = 3
 )
 
 // Game-specific settings that can be changed by the user.
-var MelodyBonusThresholdWithoutCoop = 18
-var MelodyBonusThresholdWithCoop = 15
-var AmplificationNoteLimit = 4
-var AmplificationDurationSec = 10
+var CoralBonusLevelThresholdWithoutCoop = 4
+var CoralBonusLevelThresholdWithCoop = 15
+var BargeBonusPointThreshold = 14
 
 // Represents the state of a robot at the end of the match.
 type EndgameStatus int
@@ -34,18 +26,8 @@ type EndgameStatus int
 const (
 	EndgameNone EndgameStatus = iota
 	EndgameParked
-	EndgameStageLeft
-	EndgameCenterStage
-	EndgameStageRight
-)
-
-// Represents a side of the Stage field element.
-type StagePosition int
-
-const (
-	StageLeft StagePosition = iota
-	CenterStage
-	StageRight
+	EndgameShallowCage
+	EndgameDeepCage
 )
 
 // Calculates and returns the summary fields used for ranking and display.
@@ -63,70 +45,49 @@ func (score *Score) Summarize(opponentScore *Score) *ScoreSummary {
 			summary.LeavePoints += 2
 		}
 	}
-	autoNotePoints := score.AmpSpeaker.AutoNotePoints()
-	summary.AutoPoints = summary.LeavePoints + autoNotePoints
+	autoCoralPoints := score.CoralAlgae.AutoCoralPoints()
+	autoAlgaePoints := score.CoralAlgae.AutoAlgaePoints()
+	summary.AutoPoints = summary.LeavePoints + autoCoralPoints + autoAlgaePoints
 
 	// Calculate Amp and Speaker points.
-	summary.AmpPoints = score.AmpSpeaker.AmpPoints()
-	summary.SpeakerPoints = score.AmpSpeaker.SpeakerPoints()
+	summary.CoralPoints = score.CoralAlgae.AutoCoralPoints() + score.CoralAlgae.TeleopCoralPoints()
+	summary.AlgaePoints = score.CoralAlgae.AutoAlgaePoints() + score.CoralAlgae.TeleopAlgaePoints()
 
 	// Calculate endgame points.
-	robotsByPosition := map[StagePosition]int{StageLeft: 0, CenterStage: 0, StageRight: 0}
 	for _, status := range score.EndgameStatuses {
 		switch status {
 		case EndgameParked:
-			summary.ParkPoints += 1
-		case EndgameStageLeft:
-			summary.OnStagePoints += 3
-			robotsByPosition[StageLeft]++
-		case EndgameCenterStage:
-			summary.OnStagePoints += 3
-			robotsByPosition[CenterStage]++
-		case EndgameStageRight:
-			summary.OnStagePoints += 3
-			robotsByPosition[StageRight]++
+			summary.BargePoints += 2
+		case EndgameShallowCage:
+			summary.BargePoints += 6
+		case EndgameDeepCage:
+			summary.BargePoints += 12
 		default:
 		}
 	}
-	totalOnstageRobots := 0
-	for i := 0; i < 3; i++ {
-		stagePosition := StagePosition(i)
-		onstageRobots := robotsByPosition[stagePosition]
-		totalOnstageRobots += onstageRobots
 
-		// Handle Harmony (multiple robots climbing on the same chain).
-		if onstageRobots > 1 {
-			summary.HarmonyPoints += 2 * (onstageRobots - 1)
-		}
-
-		// Handle microphones.
-		if score.MicrophoneStatuses[i] && onstageRobots > 0 {
-			summary.SpotlightPoints += onstageRobots
-		}
-
-		// Handle traps.
-		if score.TrapStatuses[i] {
-			summary.TrapPoints += 5
-		}
-	}
-	summary.StagePoints = summary.ParkPoints + summary.OnStagePoints + summary.HarmonyPoints + summary.SpotlightPoints +
-		summary.TrapPoints
-
-	summary.MatchPoints = summary.LeavePoints + summary.AmpPoints + summary.SpeakerPoints + summary.StagePoints
+	summary.MatchPoints = summary.LeavePoints + summary.CoralPoints + summary.AlgaePoints + summary.BargePoints
 
 	// Calculate penalty points.
 	for _, foul := range opponentScore.Fouls {
 		summary.FoulPoints += foul.PointValue()
 		// Store the number of tech fouls since it is used to break ties in playoffs.
-		if foul.IsTechnical {
-			summary.NumOpponentTechFouls++
+		if foul.IsMajor {
+			summary.NumOpponentMajorFouls++
 		}
 
 		rule := foul.Rule()
 		if rule != nil {
 			// Check for the opponent fouls that automatically trigger a ranking point.
 			if rule.IsRankingPoint {
-				summary.EnsembleBonusRankingPoint = true
+				if rule.RuleNumber == "G206" {
+					summary.AutoBonusRankingPoint = false
+					summary.BargeBonusRankingPoint = false
+				} else if rule.RuleNumber == "G410" {
+					summary.CoralBonusRankingPoint = true
+				} else if rule.RuleNumber == "G428" {
+					summary.BargeBonusRankingPoint = true
+				}
 			}
 		}
 	}
@@ -134,27 +95,47 @@ func (score *Score) Summarize(opponentScore *Score) *ScoreSummary {
 	summary.Score = summary.MatchPoints + summary.FoulPoints
 
 	// Calculate bonus ranking points.
-	summary.NumNotes = score.AmpSpeaker.TotalNotesScored()
-	summary.NumNotesGoal = MelodyBonusThresholdWithoutCoop
-	if MelodyBonusThresholdWithCoop > 0 {
-		// A MelodyBonusThresholdWithCoop of 0 disables the coopertition bonus.
-		summary.CoopertitionCriteriaMet = score.AmpSpeaker.CoopActivated
-		summary.CoopertitionBonus = summary.CoopertitionCriteriaMet && opponentScore.AmpSpeaker.CoopActivated
-		if summary.CoopertitionBonus {
-			summary.NumNotesGoal = MelodyBonusThresholdWithCoop
+	coralNumEachLevel := score.CoralAlgae.NumScoredCoralEachRow()
+	summary.CoralLevelMet = 0
+	for _, numCoral := range coralNumEachLevel {
+		if numCoral >= coralBonusCountThreshold {
+			summary.CoralLevelMet++
 		}
 	}
-	if summary.NumNotes >= summary.NumNotesGoal {
-		summary.MelodyBonusRankingPoint = true
-	}
-	if summary.StagePoints >= ensembleBonusPointThreshold && totalOnstageRobots >= ensembleBonusRobotThreshold {
-		summary.EnsembleBonusRankingPoint = true
+	summary.CoralLevelGoal = CoralBonusLevelThresholdWithoutCoop
+	if CoralBonusLevelThresholdWithCoop > 0 {
+		// A MelodyBonusThresholdWithCoop of 0 disables the coopertition bonus.
+		summary.CoopertitionCriteriaMet = score.CoralAlgae.IsCoopertitionThresholdAchieved()
+		summary.CoopertitionBonus = summary.CoopertitionCriteriaMet && opponentScore.CoralAlgae.IsCoopertitionThresholdAchieved()
+		if summary.CoopertitionBonus {
+			summary.CoralLevelGoal = CoralBonusLevelThresholdWithCoop
+		}
 	}
 
-	if summary.MelodyBonusRankingPoint {
+	leaveCount := 0
+	for _, status := range score.LeaveStatuses {
+		if status {
+			leaveCount++
+		}
+	}
+	if score.CoralAlgae.AutoCoralPoints() > autoBonusPointThreshold && leaveCount >= autoBonusRobotThreshold {
+		summary.AutoBonusRankingPoint = true
+	}
+
+	if summary.CoralLevelMet >= summary.CoralLevelGoal {
+		summary.CoralBonusRankingPoint = true
+	}
+	if summary.BargePoints >= BargeBonusPointThreshold {
+		summary.BargeBonusRankingPoint = true
+	}
+
+	if summary.AutoBonusRankingPoint {
 		summary.BonusRankingPoints++
 	}
-	if summary.EnsembleBonusRankingPoint {
+	if summary.CoralBonusRankingPoint {
+		summary.BonusRankingPoints++
+	}
+	if summary.BargeBonusRankingPoint {
 		summary.BonusRankingPoints++
 	}
 
@@ -164,10 +145,8 @@ func (score *Score) Summarize(opponentScore *Score) *ScoreSummary {
 // Returns true if and only if all fields of the two scores are equal.
 func (score *Score) Equals(other *Score) bool {
 	if score.LeaveStatuses != other.LeaveStatuses ||
-		score.AmpSpeaker != other.AmpSpeaker ||
+		score.CoralAlgae != other.CoralAlgae ||
 		score.EndgameStatuses != other.EndgameStatuses ||
-		score.MicrophoneStatuses != other.MicrophoneStatuses ||
-		score.TrapStatuses != other.TrapStatuses ||
 		score.PlayoffDq != other.PlayoffDq ||
 		len(score.Fouls) != len(other.Fouls) {
 		return false

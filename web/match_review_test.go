@@ -5,12 +5,13 @@ package web
 
 import (
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/Team254/cheesy-arena/tournament"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestMatchReview(t *testing.T) {
@@ -164,7 +165,7 @@ func TestMatchReviewEditCurrentMatch(t *testing.T) {
 	assert.Equal(t, game.MatchScheduled, match2.Status)
 	assert.Equal(
 		t,
-		[3]game.EndgameStatus{game.EndgameNone, game.EndgameStageLeft, game.EndgameParked},
+		[3]game.EndgameStatus{game.EndgameNone, game.EndgameShallowCage, game.EndgameParked},
 		web.arena.RedRealtimeScore.CurrentScore.EndgameStatuses,
 	)
 	assert.Equal(t, 5, web.arena.BlueRealtimeScore.CurrentScore.AmpSpeaker.AutoSpeakerNotes)

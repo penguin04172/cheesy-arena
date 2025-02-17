@@ -7,15 +7,16 @@ package web
 
 import (
 	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"strconv"
+
 	"github.com/Team254/cheesy-arena/field"
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/Team254/cheesy-arena/websocket"
 	"github.com/mitchellh/mapstructure"
-	"io"
-	"log"
-	"net/http"
-	"strconv"
 )
 
 // Renders the referee interface for assigning fouls.
@@ -103,8 +104,8 @@ func (web *Web) refereePanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 		switch messageType {
 		case "addFoul":
 			args := struct {
-				Alliance    string
-				IsTechnical bool
+				Alliance string
+				IsMajor  bool
 			}{}
 			err = mapstructure.Decode(data, &args)
 			if err != nil {
@@ -113,7 +114,7 @@ func (web *Web) refereePanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 			}
 
 			// Add the foul to the correct alliance's list.
-			foul := game.Foul{IsTechnical: args.IsTechnical}
+			foul := game.Foul{IsMajor: args.IsMajor}
 			if args.Alliance == "red" {
 				web.arena.RedRealtimeScore.CurrentScore.Fouls =
 					append(web.arena.RedRealtimeScore.CurrentScore.Fouls, foul)
@@ -145,7 +146,7 @@ func (web *Web) refereePanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 			if args.Index >= 0 && args.Index < len(*fouls) {
 				switch messageType {
 				case "toggleFoulType":
-					(*fouls)[args.Index].IsTechnical = !(*fouls)[args.Index].IsTechnical
+					(*fouls)[args.Index].IsMajor = !(*fouls)[args.Index].IsMajor
 					(*fouls)[args.Index].RuleId = 0
 				case "deleteFoul":
 					*fouls = append((*fouls)[:args.Index], (*fouls)[args.Index+1:]...)
