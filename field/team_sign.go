@@ -7,14 +7,15 @@ package field
 
 import (
 	"fmt"
-	"github.com/Team254/cheesy-arena/game"
-	"github.com/Team254/cheesy-arena/model"
 	"image/color"
 	"log"
 	"net"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Team254/cheesy-arena/game"
+	"github.com/Team254/cheesy-arena/model"
 )
 
 // Represents a collection of team number and timer signs.
@@ -184,21 +185,17 @@ func (sign *TeamSign) update(
 // Returns the in-match rear text that is common to a whole alliance.
 func generateInMatchRearText(isRed bool, countdown string, realtimeScore, opponentRealtimeScore *RealtimeScore) string {
 	scoreSummary := realtimeScore.CurrentScore.Summarize(&opponentRealtimeScore.CurrentScore)
-	scoreTotal := scoreSummary.Score - scoreSummary.StagePoints
+	scoreTotal := scoreSummary.Score - scoreSummary.BargePoints
 	opponentScoreSummary := opponentRealtimeScore.CurrentScore.Summarize(&realtimeScore.CurrentScore)
-	opponentScoreTotal := opponentScoreSummary.Score - opponentScoreSummary.StagePoints
+	opponentScoreTotal := opponentScoreSummary.Score - opponentScoreSummary.BargePoints
 	var allianceScores string
 	if isRed {
 		allianceScores = fmt.Sprintf("R%03d-B%03d", scoreTotal, opponentScoreTotal)
 	} else {
 		allianceScores = fmt.Sprintf("B%03d-R%03d", scoreTotal, opponentScoreTotal)
 	}
-	if realtimeScore.AmplifiedTimeRemainingSec > 0 {
-		// Replace the total score with the amplified countdown while it's active.
-		allianceScores = fmt.Sprintf("Amp:%2d", realtimeScore.AmplifiedTimeRemainingSec)
-	}
 	return fmt.Sprintf(
-		"%s %02d/%02d %9s", countdown[1:], scoreSummary.NumNotes, scoreSummary.NumNotesGoal, allianceScores,
+		"%s %02d/%02d %9s", countdown[1:], scoreSummary.CoralLevelMet, scoreSummary.CoralLevelGoal, allianceScores,
 	)
 }
 

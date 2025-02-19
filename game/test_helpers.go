@@ -16,39 +16,21 @@ func TestScore1() *Score {
 		{true, 25, 15},
 	}
 	return &Score{
-		LeaveStatuses: [3]bool{true, true, false},
-		AmpSpeaker: AmpSpeaker{
-			CoopActivated:                 true,
-			AutoAmpNotes:                  1,
-			TeleopAmpNotes:                4,
-			AutoSpeakerNotes:              6,
-			TeleopUnamplifiedSpeakerNotes: 1,
-			TeleopAmplifiedSpeakerNotes:   5,
-		},
-		EndgameStatuses:    [3]EndgameStatus{EndgameParked, EndgameNone, EndgameStageLeft},
-		MicrophoneStatuses: [3]bool{false, true, true},
-		TrapStatuses:       [3]bool{true, true, false},
-		Fouls:              fouls,
-		PlayoffDq:          false,
+		LeaveStatuses:   [3]bool{true, true, false},
+		CoralAlgae:      scoreElements1(),
+		EndgameStatuses: [3]EndgameStatus{EndgameParked, EndgameNone, EndgameShallowCage},
+		Fouls:           fouls,
+		PlayoffDq:       false,
 	}
 }
 
 func TestScore2() *Score {
 	return &Score{
-		LeaveStatuses: [3]bool{false, true, false},
-		AmpSpeaker: AmpSpeaker{
-			CoopActivated:                 false,
-			AutoAmpNotes:                  0,
-			TeleopAmpNotes:                51,
-			AutoSpeakerNotes:              8,
-			TeleopUnamplifiedSpeakerNotes: 3,
-			TeleopAmplifiedSpeakerNotes:   23,
-		},
-		EndgameStatuses:    [3]EndgameStatus{EndgameStageLeft, EndgameCenterStage, EndgameCenterStage},
-		MicrophoneStatuses: [3]bool{false, true, true},
-		TrapStatuses:       [3]bool{false, false, false},
-		Fouls:              []Foul{},
-		PlayoffDq:          false,
+		LeaveStatuses:   [3]bool{false, true, false},
+		CoralAlgae:      scoreElements2(),
+		EndgameStatuses: [3]EndgameStatus{EndgameShallowCage, EndgameDeepCage, EndgameDeepCage},
+		Fouls:           []Foul{},
+		PlayoffDq:       false,
 	}
 }
 
@@ -58,4 +40,46 @@ func TestRanking1() *Ranking {
 
 func TestRanking2() *Ranking {
 	return &Ranking{1114, 2, 1, RankingFields{18, 700, 625, 90, 23, 0.1114, 1, 3, 2, 0, 10}}
+}
+
+func scoreElements1() CoralAlgae {
+	return CoralAlgae{
+		AutoScoring: [3][12]bool{
+			{true, true, false, false, false, false, false, false, false, false, false, false},
+			{false, false, false, false, false, false, false, false, false, false, false, false},
+			{false, false, false, false, false, false, false, false, false, false, false, false},
+		},
+		Nodes: [3][12]bool{
+			{true, true, true, true, true, true, true, false, false, false, false, false},
+			{false, false, false, false, false, false, false, true, true, true, true, true},
+			{false, false, false, false, false, false, false, false, false, false, false, false},
+		},
+		AutoCoralTrough:      6,
+		TotalCoralTrough:     3,
+		AutoProcessorAlgae:   5,
+		TeleopProcessorAlgae: 7,
+		AutoNetAlgae:         4,
+		TeleopNetAlgae:       6,
+	}
+}
+
+func scoreElements2() CoralAlgae {
+	return CoralAlgae{
+		AutoScoring: [3][12]bool{
+			{true, false, false, false, false, false, false, false, false, false, false, false},
+			{true, false, false, false, false, false, false, false, false, false, false, false},
+			{true, false, false, false, false, false, false, false, false, false, false, false},
+		},
+		Nodes: [3][12]bool{
+			{true, true, true, true, true, false, false, false, false, false, false, false},
+			{true, false, false, true, false, true, false, false, true, false, true, false},
+			{true, false, false, true, false, false, true, false, false, true, true, false},
+		},
+		AutoCoralTrough:      6,
+		TotalCoralTrough:     12,
+		AutoProcessorAlgae:   10,
+		TeleopProcessorAlgae: 14,
+		AutoNetAlgae:         8,
+		TeleopNetAlgae:       12,
+	}
 }

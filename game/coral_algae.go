@@ -1,6 +1,9 @@
 package game
 
-import "math"
+import (
+	"math"
+	"time"
+)
 
 type Row int
 
@@ -44,20 +47,35 @@ var teleopPoints = map[Row]int{
 	rowTrough: 2,
 }
 
-type Reef struct {
-	AutoScoring      [3][12]bool
-	Nodes            [3][12]bool
-	Algaes           [2][12]bool
-	AutoCoralTrough  int
-	TotalCoralTrough int
-}
-
 type CoralAlgae struct {
-	Reef
+	AutoScoring          [3][12]bool
+	Nodes                [3][12]bool
+	AutoCoralTrough      int
+	TotalCoralTrough     int
 	AutoProcessorAlgae   int
 	TeleopProcessorAlgae int
 	AutoNetAlgae         int
 	TeleopNetAlgae       int
+}
+
+func (coralAlgae *CoralAlgae) UpdateState(
+	processorAlgaeCount int,
+	matchStartTime, currentTime time.Time,
+	isPlayoffMatch bool,
+) {
+	newProcessorAlgaes := processorAlgaeCount - coralAlgae.AutoProcessorAlgae - coralAlgae.TeleopProcessorAlgae
+
+	autoValidityCutoff := matchStartTime.Add(GetDurationToAutoEnd() + ProcessorAutoGracePeriodSec*time.Second)
+	if currentTime.Before(autoValidityCutoff) {
+		coralAlgae.AutoProcessorAlgae += newProcessorAlgaes
+		return
+	}
+
+	teleopValidityCutoff := matchStartTime.Add(GetDurationToTeleopEnd() + ProcessorTeleopGracePeriodSec*time.Second)
+	if currentTime.Before(teleopValidityCutoff) {
+		coralAlgae.TeleopProcessorAlgae += newProcessorAlgaes
+		return
+	}
 }
 
 func (coralAlgae *CoralAlgae) AutoAlgaePoints() int {
@@ -66,6 +84,20 @@ func (coralAlgae *CoralAlgae) AutoAlgaePoints() int {
 
 func (coralAlgae *CoralAlgae) TeleopAlgaePoints() int {
 	return coralAlgae.TeleopProcessorAlgae*6 + coralAlgae.TeleopNetAlgae*4
+}
+
+func (coralAlgae *CoralAlgae) AutoCoralCount() int {
+	count := 0
+	for row := rowBottom; row < rowTrough; row++ {
+		for node := nodeA; node < nodeCount; node++ {
+			autoCoral, _ := coralAlgae.numScoredAutoTeleopCoral(row, node)
+			count += autoCoral
+		}
+	}
+	autoCoral, _ := coralAlgae.numScoredAutoTeleopCoral(rowTrough, nodeA)
+	count += autoCoral
+
+	return count
 }
 
 func (coralAlgae *CoralAlgae) AutoCoralPoints() int {
@@ -80,6 +112,20 @@ func (coralAlgae *CoralAlgae) AutoCoralPoints() int {
 	points += autoCoral * autoPoints[rowTrough]
 
 	return points
+}
+
+func (coralAlgae *CoralAlgae) TeleopCoralCount() int {
+	count := 0
+	for row := rowBottom; row < rowTrough; row++ {
+		for node := nodeA; node < nodeCount; node++ {
+			_, teleopCoral := coralAlgae.numScoredAutoTeleopCoral(row, node)
+			count += teleopCoral
+		}
+	}
+	_, teleopCoral := coralAlgae.numScoredAutoTeleopCoral(rowTrough, nodeA)
+	count += teleopCoral
+
+	return count
 }
 
 func (coralAlgae *CoralAlgae) TeleopCoralPoints() int {
@@ -118,7 +164,8 @@ func (coralAlgae *CoralAlgae) numScoredAutoTeleopCoral(row Row, node Node) (int,
 	}
 
 	if row == rowTrough {
-		return coralAlgae.AutoCoralTrough, int(math.Max(0, float64(coralAlgae.TotalCoralTrough-coralAlgae.AutoCoralTrough)))
+		return int(math.Min(float64(coralAlgae.AutoCoralTrough), float64(coralAlgae.TotalCoralTrough))),
+			int(math.Max(0, float64(coralAlgae.TotalCoralTrough-coralAlgae.AutoCoralTrough)))
 	}
 
 	autoScoring := coralAlgae.AutoScoring[row][node]

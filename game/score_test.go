@@ -4,22 +4,23 @@
 package game
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestScoreSummary(t *testing.T) {
-	MelodyBonusThresholdWithoutCoop = 18
-	MelodyBonusThresholdWithCoop = 15
+	CoralBonusLevelThresholdWithoutCoop = 5
+	CoralBonusLevelThresholdWithCoop = 4
 	redScore := TestScore1()
 	blueScore := TestScore2()
 
 	redSummary := redScore.Summarize(blueScore)
 	assert.Equal(t, 4, redSummary.LeavePoints)
 	assert.Equal(t, 36, redSummary.AutoPoints)
-	assert.Equal(t, 6, redSummary.AmpPoints)
-	assert.Equal(t, 57, redSummary.SpeakerPoints)
-	assert.Equal(t, 14, redSummary.StagePoints)
+	assert.Equal(t, 6, redSummary.CoralPoints)
+	assert.Equal(t, 112, redSummary.AlgaePoints)
+	assert.Equal(t, 8, redSummary.BargePoints)
 	assert.Equal(t, 81, redSummary.MatchPoints)
 	assert.Equal(t, 0, redSummary.FoulPoints)
 	assert.Equal(t, 81, redSummary.Score)
@@ -97,7 +98,7 @@ func TestScoreMelodyBonusRankingPoint(t *testing.T) {
 	assert.Equal(t, true, blueScoreSummary.MelodyBonusRankingPoint)
 
 	// Increase non-coopertition threshold above the blue note count.
-	MelodyBonusThresholdWithoutCoop = 19
+	CoralBonusLevelThresholdWithoutCoop = 19
 	redScoreSummary = redScore.Summarize(blueScore)
 	blueScoreSummary = blueScore.Summarize(redScore)
 	assert.Equal(t, true, redScoreSummary.CoopertitionCriteriaMet)
@@ -112,7 +113,7 @@ func TestScoreMelodyBonusRankingPoint(t *testing.T) {
 	assert.Equal(t, false, blueScoreSummary.MelodyBonusRankingPoint)
 
 	// Reduce red notes to the non-coopertition threshold.
-	MelodyBonusThresholdWithCoop = 16
+	CoralBonusLevelThresholdWithCoop = 16
 	redScore.AmpSpeaker.TeleopAmpNotes = 3
 	redScoreSummary = redScore.Summarize(blueScore)
 	blueScoreSummary = blueScore.Summarize(redScore)
@@ -143,7 +144,7 @@ func TestScoreMelodyBonusRankingPoint(t *testing.T) {
 	assert.Equal(t, true, blueScoreSummary.MelodyBonusRankingPoint)
 
 	// Disable the coopertition bonus.
-	MelodyBonusThresholdWithCoop = 0
+	CoralBonusLevelThresholdWithCoop = 0
 	blueScore.AmpSpeaker.AutoSpeakerNotes = 9
 	redScoreSummary = redScore.Summarize(blueScore)
 	blueScoreSummary = blueScore.Summarize(redScore)

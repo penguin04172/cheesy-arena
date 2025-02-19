@@ -8,10 +8,8 @@ package game
 import "time"
 
 const (
-	speakerAutoGracePeriodSec      = 3
-	SpeakerTeleopGracePeriodSec    = 5
-	speakerAmplifiedGracePeriodSec = 3
-	coopTeleopWindowSec            = 45
+	ProcessorAutoGracePeriodSec   = 3
+	ProcessorTeleopGracePeriodSec = 3
 )
 
 var MatchTiming = struct {

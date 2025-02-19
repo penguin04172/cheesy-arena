@@ -16,6 +16,7 @@ type ScoreSummary struct {
 	Score                   int
 	CoopertitionCriteriaMet bool
 	CoopertitionBonus       bool
+	CoralLevelNum           [4]int
 	CoralLevelMet           int
 	CoralLevelGoal          int
 	AutoBonusRankingPoint   bool

@@ -95,9 +95,9 @@ func (score *Score) Summarize(opponentScore *Score) *ScoreSummary {
 	summary.Score = summary.MatchPoints + summary.FoulPoints
 
 	// Calculate bonus ranking points.
-	coralNumEachLevel := score.CoralAlgae.NumScoredCoralEachRow()
+	summary.CoralLevelNum = score.CoralAlgae.NumScoredCoralEachRow()
 	summary.CoralLevelMet = 0
-	for _, numCoral := range coralNumEachLevel {
+	for _, numCoral := range summary.CoralLevelNum {
 		if numCoral >= coralBonusCountThreshold {
 			summary.CoralLevelMet++
 		}

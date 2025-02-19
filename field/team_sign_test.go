@@ -4,16 +4,15 @@
 package field
 
 import (
+	"image/color"
+	"testing"
+
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/stretchr/testify/assert"
-	"image/color"
-	"testing"
 )
 
 func TestTeamSign_GenerateInMatchRearText(t *testing.T) {
-	realtimeScore1 := &RealtimeScore{AmplifiedTimeRemainingSec: 9}
-	realtimeScore2 := &RealtimeScore{AmplifiedTimeRemainingSec: 15}
 	realtimeScore3 := &RealtimeScore{CurrentScore: game.Score{AmpSpeaker: game.AmpSpeaker{AutoSpeakerNotes: 12}}}
 	realtimeScore4 := &RealtimeScore{CurrentScore: game.Score{AmpSpeaker: game.AmpSpeaker{TeleopAmpNotes: 1}}}
 

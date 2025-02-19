@@ -11,13 +11,15 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"math"
+	"net/http"
+	"strconv"
+
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/mitchellh/mapstructure"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"strconv"
 )
 
 const (
@@ -52,49 +54,48 @@ type TbaAlliance struct {
 	Score      *int     `json:"score"`
 }
 
+type TbaRow map[string]bool
+
+type TbaReef struct {
+	topRow TbaRow
+	midRow TbaRow
+	botRow TbaRow
+	trough int
+}
+
 type TbaScoreBreakdown struct {
-	AutoLineRobot1                   string `mapstructure:"autoLineRobot1"`
-	AutoLineRobot2                   string `mapstructure:"autoLineRobot2"`
-	AutoLineRobot3                   string `mapstructure:"autoLineRobot3"`
-	AutoLeavePoints                  int    `mapstructure:"autoLeavePoints"`
-	AutoAmpNoteCount                 int    `mapstructure:"autoAmpNoteCount"`
-	AutoAmpNotePoints                int    `mapstructure:"autoAmpNotePoints"`
-	AutoSpeakerNoteCount             int    `mapstructure:"autoSpeakerNoteCount"`
-	AutoSpeakerNotePoints            int    `mapstructure:"autoSpeakerNotePoints"`
-	AutoTotalNotePoints              int    `mapstructure:"autoTotalNotePoints"`
-	AutoPoints                       int    `mapstructure:"autoPoints"`
-	TeleopAmpNoteCount               int    `mapstructure:"teleopAmpNoteCount"`
-	TeleopAmpNotePoints              int    `mapstructure:"teleopAmpNotePoints"`
-	TeleopSpeakerNoteCount           int    `mapstructure:"teleopSpeakerNoteCount"`
-	TeleopSpeakerNotePoints          int    `mapstructure:"teleopSpeakerNotePoints"`
-	TeleopSpeakerNoteAmplifiedCount  int    `mapstructure:"teleopSpeakerNoteAmplifiedCount"`
-	TeleopSpeakerNoteAmplifiedPoints int    `mapstructure:"teleopSpeakerNoteAmplifiedPoints"`
-	TeleopTotalNotePoints            int    `mapstructure:"teleopTotalNotePoints"`
-	EndGameRobot1                    string `mapstructure:"endGameRobot1"`
-	EndGameRobot2                    string `mapstructure:"endGameRobot2"`
-	EndGameRobot3                    string `mapstructure:"endGameRobot3"`
-	EndGameParkPoints                int    `mapstructure:"endGameParkPoints"`
-	EndGameOnStagePoints             int    `mapstructure:"endGameOnStagePoints"`
-	EndGameHarmonyPoints             int    `mapstructure:"endGameHarmonyPoints"`
-	MicStageLeft                     bool   `mapstructure:"micStageLeft"`
-	MicCenterStage                   bool   `mapstructure:"micCenterStage"`
-	MicStageRight                    bool   `mapstructure:"micStageRight"`
-	EndGameSpotLightBonusPoints      int    `mapstructure:"endGameSpotLightBonusPoints"`
-	TrapStageLeft                    bool   `mapstructure:"trapStageLeft"`
-	TrapCenterStage                  bool   `mapstructure:"trapCenterStage"`
-	TrapStageRight                   bool   `mapstructure:"trapStageRight"`
-	EndGameNoteInTrapPoints          int    `mapstructure:"endGameNoteInTrapPoints"`
-	EndGameTotalStagePoints          int    `mapstructure:"endGameTotalStagePoints"`
-	TeleopPoints                     int    `mapstructure:"teleopPoints"`
-	CoopertitionCriteriaMet          bool   `mapstructure:"coopertitionCriteriaMet"`
-	MelodyBonusAchieved              bool   `mapstructure:"melodyBonusAchieved"`
-	EnsembleBonusAchieved            bool   `mapstructure:"ensembleBonusAchieved"`
-	FoulCount                        int    `mapstructure:"foulCount"`
-	TechFoulCount                    int    `mapstructure:"techFoulCount"`
-	G424Penalty                      bool   `mapstructure:"g424Penalty"`
-	FoulPoints                       int    `mapstructure:"foulPoints"`
-	TotalPoints                      int    `mapstructure:"totalPoints"`
-	RP                               int    `mapstructure:"rp"`
+	AutoLineRobot1          string  `mapstructure:"autoLineRobot1"`
+	AutoLineRobot2          string  `mapstructure:"autoLineRobot2"`
+	AutoLineRobot3          string  `mapstructure:"autoLineRobot3"`
+	AutoMobilityPoints      int     `mapstructure:"autoMobilityPoints"`
+	AutoReef                TbaReef `mapstructure:"autoReef"`
+	AutoCoralCount          int     `mapstructure:"autoCoralCount"`
+	AutoCoralPoints         int     `mapstructure:"autoCoralPoints"`
+	AutoPoints              int     `mapstructure:"autoPoints"`
+	TeleopReef              TbaReef `mapstructure:"teleopReef"`
+	TeleopCoralCount        int     `mapstructure:"teleopCoralCount"`
+	TeleopCoralPoints       int     `mapstructure:"teleopCoralPoints"`
+	EndGameRobot1           string  `mapstructure:"endGameRobot1"`
+	EndGameRobot2           string  `mapstructure:"endGameRobot2"`
+	EndGameRobot3           string  `mapstructure:"endGameRobot3"`
+	EndGameBargePoints      int     `mapstructure:"endGameBargePoints"`
+	NetAlgaeCount           int     `mapstructure:"netAlgaeCount"`
+	WallAlgaeCount          int     `mapstructure:"wallAlgaeCount"`
+	AlgaePoints             int     `mapstructure:"algaePoints"`
+	TeleopPoints            int     `mapstructure:"teleopPoints"`
+	CoopertitionCriteriaMet bool    `mapstructure:"coopertitionCriteriaMet"`
+	AutoBonusAchieved       bool    `mapstructure:"autoBonusAchieved"`
+	CoralBonusAchieved      bool    `mapstructure:"coralBonusAchieved"`
+	BargeBonusAchieved      bool    `mapstructure:"bargeBonusAchieved"`
+	FoulCount               int     `mapstructure:"foulCount"`
+	TechFoulCount           int     `mapstructure:"techFoulCount"`
+	G206Penalty             bool    `mapstructure:"g206Penalty"`
+	G408Penalty             bool    `mapstructure:"g408Penalty"`
+	G424Penalty             bool    `mapstructure:"g424Penalty"`
+	AdjustPoints            int     `mapstructure:"adjustPoints"`
+	FoulPoints              int     `mapstructure:"foulPoints"`
+	TotalPoints             int     `mapstructure:"totalPoints"`
+	RP                      int     `mapstructure:"rp"`
 }
 
 type TbaRanking struct {
@@ -104,7 +105,7 @@ type TbaRanking struct {
 	Coop    float32
 	Match   float32
 	Auto    float32
-	Stage   float32
+	Barge   float32
 	Wins    int `json:"wins"`
 	Losses  int `json:"losses"`
 	Ties    int `json:"ties"`
@@ -158,9 +159,8 @@ var leaveMapping = map[bool]string{false: "No", true: "Yes"}
 var endGameStatusMapping = map[game.EndgameStatus]string{
 	game.EndgameNone:        "None",
 	game.EndgameParked:      "Parked",
-	game.EndgameStageLeft:   "StageLeft",
-	game.EndgameCenterStage: "CenterStage",
-	game.EndgameStageRight:  "StageRight",
+	game.EndgameShallowCage: "ShallowCage",
+	game.EndgameDeepCage:    "DeepCage",
 }
 
 func NewTbaClient(eventCode, secretId, secret string) *TbaClient {
@@ -409,7 +409,7 @@ func (client *TbaClient) PublishRankings(database *model.Database) error {
 			Coop:    float32(ranking.CoopertitionPoints) / float32(ranking.Played),
 			Match:   float32(ranking.MatchPoints) / float32(ranking.Played),
 			Auto:    float32(ranking.AutoPoints) / float32(ranking.Played),
-			Stage:   float32(ranking.StagePoints) / float32(ranking.Played),
+			Barge:   float32(ranking.BargePoints) / float32(ranking.Played),
 			Wins:    ranking.Wins,
 			Losses:  ranking.Losses,
 			Ties:    ranking.Ties,
@@ -638,48 +638,41 @@ func createTbaScoringBreakdown(
 	breakdown.AutoLineRobot1 = leaveMapping[score.LeaveStatuses[0]]
 	breakdown.AutoLineRobot2 = leaveMapping[score.LeaveStatuses[1]]
 	breakdown.AutoLineRobot3 = leaveMapping[score.LeaveStatuses[2]]
-	breakdown.AutoLeavePoints = scoreSummary.LeavePoints
-	breakdown.AutoAmpNoteCount = score.AmpSpeaker.AutoAmpNotes
-	breakdown.AutoAmpNotePoints = 2 * breakdown.AutoAmpNoteCount
-	breakdown.AutoSpeakerNoteCount = score.AmpSpeaker.AutoSpeakerNotes
-	breakdown.AutoSpeakerNotePoints = 5 * breakdown.AutoSpeakerNoteCount
-	breakdown.AutoTotalNotePoints = breakdown.AutoAmpNotePoints + breakdown.AutoSpeakerNotePoints
+	breakdown.AutoMobilityPoints = scoreSummary.LeavePoints
+	breakdown.AutoReef = createTbaReef(&score.CoralAlgae, true)
+	breakdown.AutoCoralCount = score.CoralAlgae.AutoCoralCount()
+	breakdown.AutoCoralPoints = score.CoralAlgae.AutoCoralPoints()
 	breakdown.AutoPoints = scoreSummary.AutoPoints
-	breakdown.TeleopAmpNoteCount = score.AmpSpeaker.TeleopAmpNotes
-	breakdown.TeleopAmpNotePoints = 1 * breakdown.TeleopAmpNoteCount
-	breakdown.TeleopSpeakerNoteCount = score.AmpSpeaker.TeleopUnamplifiedSpeakerNotes
-	breakdown.TeleopSpeakerNotePoints = 2 * breakdown.TeleopSpeakerNoteCount
-	breakdown.TeleopSpeakerNoteAmplifiedCount = score.AmpSpeaker.TeleopAmplifiedSpeakerNotes
-	breakdown.TeleopSpeakerNoteAmplifiedPoints = 5 * breakdown.TeleopSpeakerNoteAmplifiedCount
-	breakdown.TeleopTotalNotePoints = breakdown.TeleopAmpNotePoints + breakdown.TeleopSpeakerNotePoints +
-		breakdown.TeleopSpeakerNoteAmplifiedPoints
+	breakdown.TeleopReef = createTbaReef(&score.CoralAlgae, false)
+	breakdown.TeleopCoralCount = score.CoralAlgae.TeleopCoralCount()
+	breakdown.TeleopCoralPoints = score.CoralAlgae.TeleopAlgaePoints()
+	breakdown.NetAlgaeCount = score.CoralAlgae.AutoNetAlgae + score.CoralAlgae.TeleopNetAlgae
+	breakdown.WallAlgaeCount = score.CoralAlgae.AutoProcessorAlgae + score.CoralAlgae.TeleopProcessorAlgae
+	breakdown.AlgaePoints = score.CoralAlgae.AutoCoralPoints() + score.CoralAlgae.TeleopAlgaePoints()
 	breakdown.EndGameRobot1 = endGameStatusMapping[score.EndgameStatuses[0]]
 	breakdown.EndGameRobot2 = endGameStatusMapping[score.EndgameStatuses[1]]
 	breakdown.EndGameRobot3 = endGameStatusMapping[score.EndgameStatuses[2]]
-	breakdown.EndGameParkPoints = scoreSummary.ParkPoints
-	breakdown.EndGameOnStagePoints = scoreSummary.OnStagePoints
-	breakdown.EndGameHarmonyPoints = scoreSummary.HarmonyPoints
-	breakdown.MicStageLeft = score.MicrophoneStatuses[0]
-	breakdown.MicCenterStage = score.MicrophoneStatuses[1]
-	breakdown.MicStageRight = score.MicrophoneStatuses[2]
-	breakdown.EndGameSpotLightBonusPoints = scoreSummary.SpotlightPoints
-	breakdown.TrapStageLeft = score.TrapStatuses[0]
-	breakdown.TrapCenterStage = score.TrapStatuses[1]
-	breakdown.TrapStageRight = score.TrapStatuses[2]
-	breakdown.EndGameNoteInTrapPoints = scoreSummary.TrapPoints
-	breakdown.EndGameTotalStagePoints = scoreSummary.StagePoints
-	breakdown.TeleopPoints = breakdown.TeleopTotalNotePoints + breakdown.EndGameTotalStagePoints
+	breakdown.EndGameBargePoints = scoreSummary.BargePoints
+	breakdown.TeleopPoints = breakdown.TeleopCoralPoints + breakdown.EndGameBargePoints + score.CoralAlgae.TeleopAlgaePoints()
 	breakdown.CoopertitionCriteriaMet = scoreSummary.CoopertitionCriteriaMet
-	breakdown.MelodyBonusAchieved = scoreSummary.MelodyBonusRankingPoint
-	breakdown.EnsembleBonusAchieved = scoreSummary.EnsembleBonusRankingPoint
+	breakdown.AutoBonusAchieved = scoreSummary.AutoBonusRankingPoint
+	breakdown.CoralBonusAchieved = scoreSummary.CoralBonusRankingPoint
+	breakdown.BargeBonusAchieved = scoreSummary.BargeBonusRankingPoint
 	for _, foul := range score.Fouls {
-		if foul.IsTechnical {
+		if foul.IsMajor {
 			breakdown.TechFoulCount++
 		} else {
 			breakdown.FoulCount++
 		}
 		if foul.Rule() != nil && foul.Rule().IsRankingPoint {
-			breakdown.G424Penalty = true
+			switch foul.Rule().RuleNumber {
+			case "G206":
+				breakdown.G206Penalty = true
+			case "G408":
+				breakdown.G408Penalty = true
+			case "G424":
+				breakdown.G424Penalty = true
+			}
 		}
 	}
 	breakdown.FoulPoints = scoreSummary.FoulPoints
@@ -696,9 +689,39 @@ func createTbaScoringBreakdown(
 	// event settings.
 	breakdownMap := make(map[string]any)
 	_ = mapstructure.Decode(breakdown, &breakdownMap)
-	if eventSettings.MelodyBonusThresholdWithCoop == 0 {
+	if eventSettings.CoralBonusLevelThresholdWithCoop == 0 {
 		delete(breakdownMap, "coopertitionCriteriaMet")
 	}
 
 	return breakdownMap
+}
+
+var nodes = []string{"NodeA", "NodeB", "NodeC", "NodeD", "NodeE", "NodeF", "NodeG", "NodeH", "NodeI", "NodeJ", "NodeK", "NodeL"}
+
+func createTbaReef(coralAlgae *game.CoralAlgae, auto bool) TbaReef {
+	var tbaReef = TbaReef{
+		topRow: make(TbaRow),
+		midRow: make(TbaRow),
+		botRow: make(TbaRow),
+	}
+
+	for i := 0; i < 12; i++ {
+		if !auto {
+			tbaReef.topRow[nodes[i]] = coralAlgae.Nodes[2][i]
+			tbaReef.midRow[nodes[i]] = coralAlgae.Nodes[1][i]
+			tbaReef.botRow[nodes[i]] = coralAlgae.Nodes[0][i]
+		} else {
+			tbaReef.topRow[nodes[i]] = coralAlgae.AutoScoring[2][i] && coralAlgae.Nodes[2][i]
+			tbaReef.midRow[nodes[i]] = coralAlgae.AutoScoring[1][i] && coralAlgae.Nodes[1][i]
+			tbaReef.botRow[nodes[i]] = coralAlgae.AutoScoring[0][i] && coralAlgae.Nodes[0][i]
+		}
+	}
+
+	if !auto {
+		tbaReef.trough = int(math.Max(0, float64(coralAlgae.TotalCoralTrough-coralAlgae.AutoCoralTrough)))
+	} else {
+		tbaReef.trough = int(math.Min(float64(coralAlgae.AutoCoralTrough), float64(coralAlgae.TotalCoralTrough)))
+	}
+
+	return tbaReef
 }
