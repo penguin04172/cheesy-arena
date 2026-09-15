@@ -613,6 +613,47 @@ paths:
                   - {$ref: "#/components/schemas/GameSettingsResponse"}
         "409": {$ref: "#/components/responses/Conflict"}
         "422": {$ref: "#/components/responses/ValidationError"}
+  /admin/database/backups:
+    post:
+      operationId: createAdminDatabaseBackup
+      summary: Create a server-side snapshot of the event database
+      security: [{sessionCookie: []}]
+      parameters:
+        - {$ref: "#/components/parameters/CsrfToken"}
+        - {$ref: "#/components/parameters/IdempotencyKey"}
+      responses:
+        "201":
+          description: Backup created
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/DatabaseBackupResponse"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /admin/tournament-data/{type}:
+    parameters:
+      - in: path
+        name: type
+        required: true
+        schema: {type: string, enum: [practice, qualification, playoff]}
+    delete:
+      operationId: clearAdminTournamentData
+      summary: Atomically clear one tournament stage after creating a backup
+      security: [{sessionCookie: []}]
+      parameters:
+        - {$ref: "#/components/parameters/CsrfToken"}
+        - {$ref: "#/components/parameters/IdempotencyKey"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/TournamentDataClearInput"}
+      responses:
+        "200":
+          description: Cleared record counts, or the result of the original request when replayed
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/TournamentDataClearResponse"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/ValidationError"}
 components:
   securitySchemes:
     sessionCookie:
@@ -630,6 +671,11 @@ components:
       name: X-CSRF-Token
       required: true
       schema: {type: string}
+    IdempotencyKey:
+      in: header
+      name: Idempotency-Key
+      required: true
+      schema: {type: string, minLength: 1, maxLength: 128}
   responses:
     BadRequest:
       description: Malformed request
@@ -1041,6 +1087,44 @@ components:
       required: [data, meta]
       properties:
         data: {$ref: "#/components/schemas/HardwareSettings"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    DatabaseBackupResult:
+      type: object
+      required: [created, replayed]
+      properties:
+        created: {type: boolean}
+        replayed: {type: boolean}
+    DatabaseBackupResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/DatabaseBackupResult"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    TournamentDataClearInput:
+      type: object
+      additionalProperties: false
+      required: [eventId, confirmation]
+      properties:
+        eventId: {type: integer, minimum: 1}
+        confirmation:
+          type: string
+          description: Must exactly equal clear:{type}, for example clear:qualification.
+    TournamentDataClearResult:
+      type: object
+      required: [matchType, matches, matchResults, scheduledBreaks, rankings, alliances, replayed]
+      properties:
+        matchType: {type: string, enum: [practice, qualification, playoff]}
+        matches: {type: integer, minimum: 0}
+        matchResults: {type: integer, minimum: 0}
+        scheduledBreaks: {type: integer, minimum: 0}
+        rankings: {type: integer, minimum: 0}
+        alliances: {type: integer, minimum: 0}
+        replayed: {type: boolean}
+    TournamentDataClearResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/TournamentDataClearResult"}
         meta: {$ref: "#/components/schemas/ResponseMeta"}
     GameSettings:
       type: object

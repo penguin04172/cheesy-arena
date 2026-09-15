@@ -18,6 +18,14 @@ type apiV1State struct {
 	teamMutationMu sync.Mutex
 	judgingMu      sync.Mutex
 	settingsMu     sync.Mutex
+	destructiveMu  sync.Mutex
+	idempotencyMu  sync.Mutex
+	idempotency    map[string]apiV1IdempotencyRecord
+}
+
+type apiV1IdempotencyRecord struct {
+	Operation string
+	Data      any
 }
 
 type apiV1JobManager struct {
@@ -48,7 +56,10 @@ type apiV1JobDto struct {
 }
 
 func newApiV1State() *apiV1State {
-	return &apiV1State{jobs: &apiV1JobManager{jobs: make(map[string]*apiV1Job)}}
+	return &apiV1State{
+		jobs:        &apiV1JobManager{jobs: make(map[string]*apiV1Job)},
+		idempotency: make(map[string]apiV1IdempotencyRecord),
+	}
 }
 
 func (manager *apiV1JobManager) create(jobType string) apiV1JobDto {
