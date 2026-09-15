@@ -138,8 +138,7 @@ func (web *Web) apiV1AdminSettingsUpdateHandler(w http.ResponseWriter, r *http.R
 	case "network":
 		err = web.applyApiV1NetworkSettings(w, r, &candidate)
 	case "hardware":
-		writeApiV1Error(w, r, http.StatusNotImplemented, "section_not_implemented", "This settings section is not implemented yet.", nil)
-		return
+		err = web.applyApiV1HardwareSettings(w, r, &candidate)
 	default:
 		writeApiV1Error(w, r, http.StatusNotFound, "settings_section_not_found", "Settings section not found.", nil)
 		return
@@ -404,8 +403,7 @@ func (web *Web) writeApiV1SettingsSection(w http.ResponseWriter, r *http.Request
 			SccDownCommands: settings.SCCDownCommands,
 		}
 	case "hardware":
-		writeApiV1Error(w, r, http.StatusNotImplemented, "section_not_implemented", "This settings section is not implemented yet.", nil)
-		return
+		data = newApiV1HardwareSettings(settings)
 	default:
 		writeApiV1Error(w, r, http.StatusNotFound, "settings_section_not_found", "Settings section not found.", nil)
 		return

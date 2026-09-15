@@ -565,7 +565,7 @@ paths:
       - in: path
         name: section
         required: true
-        schema: {type: string, enum: [event, integrations, network, game]}
+        schema: {type: string, enum: [event, integrations, network, hardware, game]}
     get:
       operationId: getAdminSettingsSection
       summary: Get one settings section with secrets represented only as configured flags
@@ -580,6 +580,7 @@ paths:
                   - {$ref: "#/components/schemas/EventSettingsResponse"}
                   - {$ref: "#/components/schemas/IntegrationSettingsResponse"}
                   - {$ref: "#/components/schemas/NetworkSettingsResponse"}
+                  - {$ref: "#/components/schemas/HardwareSettingsResponse"}
                   - {$ref: "#/components/schemas/GameSettingsResponse"}
         "404": {$ref: "#/components/responses/NotFound"}
     patch:
@@ -596,6 +597,7 @@ paths:
                 - {$ref: "#/components/schemas/EventSettingsInput"}
                 - {$ref: "#/components/schemas/IntegrationSettingsInput"}
                 - {$ref: "#/components/schemas/NetworkSettingsInput"}
+                - {$ref: "#/components/schemas/HardwareSettingsInput"}
                 - {$ref: "#/components/schemas/GameSettingsInput"}
       responses:
         "200":
@@ -607,6 +609,7 @@ paths:
                   - {$ref: "#/components/schemas/EventSettingsResponse"}
                   - {$ref: "#/components/schemas/IntegrationSettingsResponse"}
                   - {$ref: "#/components/schemas/NetworkSettingsResponse"}
+                  - {$ref: "#/components/schemas/HardwareSettingsResponse"}
                   - {$ref: "#/components/schemas/GameSettingsResponse"}
         "409": {$ref: "#/components/responses/Conflict"}
         "422": {$ref: "#/components/responses/ValidationError"}
@@ -942,6 +945,102 @@ components:
       required: [data, meta]
       properties:
         data: {$ref: "#/components/schemas/NetworkSettings"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    TeamSignSettings:
+      type: object
+      required: [red1, red2, red3, redTimer, blue1, blue2, blue3, blueTimer]
+      properties:
+        red1: {type: integer, minimum: 0}
+        red2: {type: integer, minimum: 0}
+        red3: {type: integer, minimum: 0}
+        redTimer: {type: integer, minimum: 0}
+        blue1: {type: integer, minimum: 0}
+        blue2: {type: integer, minimum: 0}
+        blue3: {type: integer, minimum: 0}
+        blueTimer: {type: integer, minimum: 0}
+    TeamSignSettingsInput:
+      type: object
+      additionalProperties: false
+      properties:
+        red1: {type: integer, minimum: 0}
+        red2: {type: integer, minimum: 0}
+        red3: {type: integer, minimum: 0}
+        redTimer: {type: integer, minimum: 0}
+        blue1: {type: integer, minimum: 0}
+        blue2: {type: integer, minimum: 0}
+        blue3: {type: integer, minimum: 0}
+        blueTimer: {type: integer, minimum: 0}
+    CompanionButton:
+      type: object
+      required: [page, row, column]
+      properties:
+        page: {type: integer, minimum: 0}
+        row: {type: integer, minimum: 0}
+        column: {type: integer, minimum: 0}
+    CompanionButtonInput:
+      type: object
+      additionalProperties: false
+      properties:
+        page: {type: integer, minimum: 0}
+        row: {type: integer, minimum: 0}
+        column: {type: integer, minimum: 0}
+    CompanionSettings:
+      type: object
+      required: [address, port, matchPreview, setAudience, matchStart, teleopStart, endgameStart, matchEnd, postResult, allianceSelection, matchAbort]
+      properties:
+        address: {type: string}
+        port: {type: integer, minimum: 0, maximum: 65535}
+        matchPreview: {$ref: "#/components/schemas/CompanionButton"}
+        setAudience: {$ref: "#/components/schemas/CompanionButton"}
+        matchStart: {$ref: "#/components/schemas/CompanionButton"}
+        teleopStart: {$ref: "#/components/schemas/CompanionButton"}
+        endgameStart: {$ref: "#/components/schemas/CompanionButton"}
+        matchEnd: {$ref: "#/components/schemas/CompanionButton"}
+        postResult: {$ref: "#/components/schemas/CompanionButton"}
+        allianceSelection: {$ref: "#/components/schemas/CompanionButton"}
+        matchAbort: {$ref: "#/components/schemas/CompanionButton"}
+    CompanionSettingsInput:
+      type: object
+      additionalProperties: false
+      properties:
+        address: {type: string}
+        port: {type: integer, minimum: 0, maximum: 65535}
+        matchPreview: {$ref: "#/components/schemas/CompanionButtonInput"}
+        setAudience: {$ref: "#/components/schemas/CompanionButtonInput"}
+        matchStart: {$ref: "#/components/schemas/CompanionButtonInput"}
+        teleopStart: {$ref: "#/components/schemas/CompanionButtonInput"}
+        endgameStart: {$ref: "#/components/schemas/CompanionButtonInput"}
+        matchEnd: {$ref: "#/components/schemas/CompanionButtonInput"}
+        postResult: {$ref: "#/components/schemas/CompanionButtonInput"}
+        allianceSelection: {$ref: "#/components/schemas/CompanionButtonInput"}
+        matchAbort: {$ref: "#/components/schemas/CompanionButtonInput"}
+    HardwareSettings:
+      type: object
+      required: [plcAddress, ledControllerAddress, ledUniverseMode, teamSigns, useLiteUdpPort, blackmagicAddresses, companion]
+      properties:
+        plcAddress: {type: string}
+        ledControllerAddress: {type: string}
+        ledUniverseMode: {type: string, enum: [single, two]}
+        teamSigns: {$ref: "#/components/schemas/TeamSignSettings"}
+        useLiteUdpPort: {type: boolean}
+        blackmagicAddresses: {type: string}
+        companion: {$ref: "#/components/schemas/CompanionSettings"}
+    HardwareSettingsInput:
+      type: object
+      additionalProperties: false
+      properties:
+        plcAddress: {type: string}
+        ledControllerAddress: {type: string}
+        ledUniverseMode: {type: string, enum: [single, two]}
+        teamSigns: {$ref: "#/components/schemas/TeamSignSettingsInput"}
+        useLiteUdpPort: {type: boolean}
+        blackmagicAddresses: {type: string}
+        companion: {$ref: "#/components/schemas/CompanionSettingsInput"}
+    HardwareSettingsResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/HardwareSettings"}
         meta: {$ref: "#/components/schemas/ResponseMeta"}
     GameSettings:
       type: object
