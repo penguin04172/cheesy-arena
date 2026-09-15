@@ -94,6 +94,9 @@ func (web *Web) registerApiV1Routes(mux *http.ServeMux) {
 	mux.Handle("POST /api/v1/admin/teams/refresh", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminTeamRefreshHandler)))
 	mux.Handle("POST /api/v1/admin/teams/wpa-keys", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminTeamWpaKeysHandler)))
 	mux.Handle("GET /api/v1/admin/jobs/{id}", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AdminJobHandler)))
+	mux.Handle("GET /api/v1/admin/judging-schedule", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AdminJudgingScheduleHandler)))
+	mux.Handle("POST /api/v1/admin/judging-schedule", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminJudgingScheduleGenerateHandler)))
+	mux.Handle("DELETE /api/v1/admin/judging-schedule", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminJudgingScheduleClearHandler)))
 }
 
 func (web *Web) apiV1AdminRead(next http.Handler) http.Handler {

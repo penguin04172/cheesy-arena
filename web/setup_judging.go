@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"sync"
 )
 
 var judgingScheduleParams = tournament.JudgingScheduleParams{
@@ -19,6 +20,20 @@ var judgingScheduleParams = tournament.JudgingScheduleParams{
 	DurationMinutes:        15,
 	PreviousSpacingMinutes: 20,
 	NextSpacingMinutes:     20,
+}
+
+var judgingScheduleParamsMu sync.RWMutex
+
+func getJudgingScheduleParams() tournament.JudgingScheduleParams {
+	judgingScheduleParamsMu.RLock()
+	defer judgingScheduleParamsMu.RUnlock()
+	return judgingScheduleParams
+}
+
+func setJudgingScheduleParams(params tournament.JudgingScheduleParams) {
+	judgingScheduleParamsMu.Lock()
+	defer judgingScheduleParamsMu.Unlock()
+	judgingScheduleParams = params
 }
 
 // Shows the judging schedule setup page.
@@ -75,15 +90,16 @@ func (web *Web) judgingGeneratePostHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	judgingScheduleParams.NumJudges = numJudges
-	judgingScheduleParams.DurationMinutes = durationMinutes
-	judgingScheduleParams.PreviousSpacingMinutes = previousSpacingMinutes
-	judgingScheduleParams.NextSpacingMinutes = nextSpacingMinutes
-	err = tournament.BuildJudgingSchedule(web.arena.Database, judgingScheduleParams)
+	params := tournament.JudgingScheduleParams{
+		NumJudges: numJudges, DurationMinutes: durationMinutes,
+		PreviousSpacingMinutes: previousSpacingMinutes, NextSpacingMinutes: nextSpacingMinutes,
+	}
+	err = tournament.BuildJudgingSchedule(web.arena.Database, params)
 	if err != nil {
 		web.renderJudging(w, r, fmt.Sprintf("Error generating judging schedule: %s", err.Error()))
 		return
 	}
+	setJudgingScheduleParams(params)
 
 	http.Redirect(w, r, "/setup/judging", 303)
 }
@@ -131,7 +147,7 @@ func (web *Web) renderJudging(w http.ResponseWriter, r *http.Request, errorMessa
 		JudgingScheduleParams tournament.JudgingScheduleParams
 		JudgingSlots          []model.JudgingSlot
 		ErrorMessage          string
-	}{web.arena.EventSettings, judgingScheduleParams, slots, errorMessage}
+	}{web.arena.EventSettings, getJudgingScheduleParams(), slots, errorMessage}
 	err = template.ExecuteTemplate(w, "base", data)
 	if err != nil {
 		handleWebErr(w, err)

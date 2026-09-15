@@ -530,6 +530,36 @@ paths:
       responses:
         "200": {$ref: "#/components/responses/AdminJobItem"}
         "404": {$ref: "#/components/responses/NotFound"}
+  /admin/judging-schedule:
+    get:
+      operationId: getAdminJudgingSchedule
+      summary: Get judging generation parameters and slots ordered by judge and time
+      security: [{sessionCookie: []}]
+      responses:
+        "200": {$ref: "#/components/responses/AdminJudgingScheduleItem"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+    post:
+      operationId: generateAdminJudgingSchedule
+      summary: Generate and atomically retain a judging schedule
+      security: [{sessionCookie: []}]
+      parameters: [{$ref: "#/components/parameters/CsrfToken"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/JudgingScheduleParams"}
+      responses:
+        "201": {$ref: "#/components/responses/AdminJudgingScheduleItem"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+    delete:
+      operationId: clearAdminJudgingSchedule
+      summary: Clear all judging slots
+      security: [{sessionCookie: []}]
+      parameters: [{$ref: "#/components/parameters/CsrfToken"}]
+      responses:
+        "204": {description: Judging schedule cleared}
 components:
   securitySchemes:
     sessionCookie:
@@ -588,6 +618,11 @@ components:
       content:
         application/json:
           schema: {$ref: "#/components/schemas/AdminJobResponse"}
+    AdminJudgingScheduleItem:
+      description: Judging schedule snapshot
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/JudgingScheduleResponse"}
     AdminAwardList:
       description: Awards
       content:
@@ -720,6 +755,43 @@ components:
       required: [data, meta]
       properties:
         data: {$ref: "#/components/schemas/AdminJob"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    JudgingScheduleParams:
+      type: object
+      additionalProperties: false
+      required: [numJudges, durationMinutes, previousSpacingMinutes, nextSpacingMinutes]
+      properties:
+        numJudges: {type: integer, minimum: 1, maximum: 100}
+        durationMinutes: {type: integer, minimum: 1, maximum: 1440}
+        previousSpacingMinutes: {type: integer, minimum: 1, maximum: 1440}
+        nextSpacingMinutes: {type: integer, minimum: 1, maximum: 1440}
+    JudgingSlot:
+      type: object
+      required: [id, time, teamId, previousMatchNumber, previousMatchTime, nextMatchNumber, nextMatchTime, judgeNumber]
+      properties:
+        id: {type: integer}
+        time: {type: string, format: date-time}
+        teamId: {type: integer}
+        previousMatchNumber: {type: integer, minimum: 0}
+        previousMatchTime:
+          type: string
+          description: RFC 3339, or an empty string when no previous match exists.
+        nextMatchNumber: {type: integer, minimum: 0}
+        nextMatchTime:
+          type: string
+          description: RFC 3339, or an empty string when no next match exists.
+        judgeNumber: {type: integer, minimum: 1}
+    JudgingSchedule:
+      type: object
+      required: [params, slots]
+      properties:
+        params: {$ref: "#/components/schemas/JudgingScheduleParams"}
+        slots: {type: array, items: {$ref: "#/components/schemas/JudgingSlot"}}
+    JudgingScheduleResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/JudgingSchedule"}
         meta: {$ref: "#/components/schemas/ResponseMeta"}
     AdminAwardInput:
       type: object
