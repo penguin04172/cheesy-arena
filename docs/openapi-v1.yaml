@@ -560,6 +560,53 @@ paths:
       parameters: [{$ref: "#/components/parameters/CsrfToken"}]
       responses:
         "204": {description: Judging schedule cleared}
+  /admin/settings/{section}:
+    parameters:
+      - in: path
+        name: section
+        required: true
+        schema: {type: string, enum: [event, integrations, game]}
+    get:
+      operationId: getAdminSettingsSection
+      summary: Get one settings section with secrets represented only as configured flags
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Settings section
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: "#/components/schemas/EventSettingsResponse"}
+                  - {$ref: "#/components/schemas/IntegrationSettingsResponse"}
+                  - {$ref: "#/components/schemas/GameSettingsResponse"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    patch:
+      operationId: updateAdminSettingsSection
+      summary: Partially update one settings section
+      security: [{sessionCookie: []}]
+      parameters: [{$ref: "#/components/parameters/CsrfToken"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - {$ref: "#/components/schemas/EventSettingsInput"}
+                - {$ref: "#/components/schemas/IntegrationSettingsInput"}
+                - {$ref: "#/components/schemas/GameSettingsInput"}
+      responses:
+        "200":
+          description: Updated settings section
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {$ref: "#/components/schemas/EventSettingsResponse"}
+                  - {$ref: "#/components/schemas/IntegrationSettingsResponse"}
+                  - {$ref: "#/components/schemas/GameSettingsResponse"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/ValidationError"}
 components:
   securitySchemes:
     sessionCookie:
@@ -792,6 +839,96 @@ components:
       required: [data, meta]
       properties:
         data: {$ref: "#/components/schemas/JudgingSchedule"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    EventSettings:
+      type: object
+      required: [name, playoffType, numPlayoffAlliances, selectionRound2Order, selectionRound3Order, selectionShowUnpickedTeams, autoAudienceDisplayEnabled, adminPasswordConfigured]
+      properties:
+        name: {type: string}
+        playoffType: {type: string, enum: [double_elimination, single_elimination]}
+        numPlayoffAlliances: {type: integer, minimum: 2, maximum: 16}
+        selectionRound2Order: {type: string}
+        selectionRound3Order: {type: string}
+        selectionShowUnpickedTeams: {type: boolean}
+        autoAudienceDisplayEnabled: {type: boolean}
+        adminPasswordConfigured: {type: boolean}
+    EventSettingsInput:
+      type: object
+      additionalProperties: false
+      properties:
+        name: {type: string, minLength: 1}
+        playoffType: {type: string, enum: [double_elimination, single_elimination]}
+        numPlayoffAlliances: {type: integer, minimum: 2, maximum: 16}
+        selectionRound2Order: {type: string}
+        selectionRound3Order: {type: string}
+        selectionShowUnpickedTeams: {type: boolean}
+        autoAudienceDisplayEnabled: {type: boolean}
+        adminPassword: {$ref: "#/components/schemas/SecretInput"}
+    EventSettingsResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/EventSettings"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    IntegrationSettings:
+      type: object
+      required: [tbaDownloadEnabled, tbaPublishingEnabled, tbaEventCode, tbaSecretIdConfigured, tbaSecretConfigured, nexusEnabled, nexusAutoQueueEnabled, nexusAutoQueueKeyConfigured]
+      properties:
+        tbaDownloadEnabled: {type: boolean}
+        tbaPublishingEnabled: {type: boolean}
+        tbaEventCode: {type: string}
+        tbaSecretIdConfigured: {type: boolean}
+        tbaSecretConfigured: {type: boolean}
+        nexusEnabled: {type: boolean}
+        nexusAutoQueueEnabled: {type: boolean}
+        nexusAutoQueueKeyConfigured: {type: boolean}
+    IntegrationSettingsInput:
+      type: object
+      additionalProperties: false
+      properties:
+        tbaDownloadEnabled: {type: boolean}
+        tbaPublishingEnabled: {type: boolean}
+        tbaEventCode: {type: string}
+        tbaSecretId: {$ref: "#/components/schemas/SecretInput"}
+        tbaSecret: {$ref: "#/components/schemas/SecretInput"}
+        nexusEnabled: {type: boolean}
+        nexusAutoQueueEnabled: {type: boolean}
+        nexusAutoQueueKey: {$ref: "#/components/schemas/SecretInput"}
+    IntegrationSettingsResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/IntegrationSettings"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    GameSettings:
+      type: object
+      required: [autoDurationSec, pauseDurationSec, transitionShiftDurationSec, shiftDurationSec, endgameDurationSec, energizedBonusThreshold, superchargedBonusThreshold, traversalBonusThreshold]
+      properties:
+        autoDurationSec: {type: integer, minimum: 0, maximum: 86400}
+        pauseDurationSec: {type: integer, minimum: 0, maximum: 86400}
+        transitionShiftDurationSec: {type: integer, minimum: 0, maximum: 86400}
+        shiftDurationSec: {type: integer, minimum: 0, maximum: 86400}
+        endgameDurationSec: {type: integer, minimum: 0, maximum: 86400}
+        energizedBonusThreshold: {type: integer, minimum: 0, maximum: 86400}
+        superchargedBonusThreshold: {type: integer, minimum: 0, maximum: 86400}
+        traversalBonusThreshold: {type: integer, minimum: 0, maximum: 86400}
+    GameSettingsInput:
+      type: object
+      additionalProperties: false
+      properties:
+        autoDurationSec: {type: integer, minimum: 0, maximum: 86400}
+        pauseDurationSec: {type: integer, minimum: 0, maximum: 86400}
+        transitionShiftDurationSec: {type: integer, minimum: 0, maximum: 86400}
+        shiftDurationSec: {type: integer, minimum: 0, maximum: 86400}
+        endgameDurationSec: {type: integer, minimum: 0, maximum: 86400}
+        energizedBonusThreshold: {type: integer, minimum: 0, maximum: 86400}
+        superchargedBonusThreshold: {type: integer, minimum: 0, maximum: 86400}
+        traversalBonusThreshold: {type: integer, minimum: 0, maximum: 86400}
+    GameSettingsResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/GameSettings"}
         meta: {$ref: "#/components/schemas/ResponseMeta"}
     AdminAwardInput:
       type: object

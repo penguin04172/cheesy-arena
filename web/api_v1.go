@@ -97,6 +97,8 @@ func (web *Web) registerApiV1Routes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/admin/judging-schedule", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AdminJudgingScheduleHandler)))
 	mux.Handle("POST /api/v1/admin/judging-schedule", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminJudgingScheduleGenerateHandler)))
 	mux.Handle("DELETE /api/v1/admin/judging-schedule", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminJudgingScheduleClearHandler)))
+	mux.Handle("GET /api/v1/admin/settings/{section}", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AdminSettingsHandler)))
+	mux.Handle("PATCH /api/v1/admin/settings/{section}", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminSettingsUpdateHandler)))
 }
 
 func (web *Web) apiV1AdminRead(next http.Handler) http.Handler {

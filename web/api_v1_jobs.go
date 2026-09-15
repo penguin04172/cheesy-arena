@@ -17,6 +17,7 @@ type apiV1State struct {
 	jobs           *apiV1JobManager
 	teamMutationMu sync.Mutex
 	judgingMu      sync.Mutex
+	settingsMu     sync.Mutex
 }
 
 type apiV1JobManager struct {

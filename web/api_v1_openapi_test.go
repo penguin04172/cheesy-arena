@@ -36,6 +36,7 @@ func TestApiV1OpenApiDocument(t *testing.T) {
 		"/admin/teams", "/admin/teams/{id}", "/admin/teams/refresh", "/admin/teams/wpa-keys",
 		"/admin/jobs/{id}",
 		"/admin/judging-schedule",
+		"/admin/settings/{section}",
 	} {
 		assert.Contains(t, document.Paths, path)
 	}
