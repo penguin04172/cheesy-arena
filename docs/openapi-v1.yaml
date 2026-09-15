@@ -628,6 +628,42 @@ paths:
             application/json:
               schema: {$ref: "#/components/schemas/DatabaseBackupResponse"}
         "409": {$ref: "#/components/responses/Conflict"}
+  /admin/database/restore:
+    post:
+      operationId: restoreAdminDatabase
+      summary: Validate and atomically restore a Cheesy Arena database backup
+      description: Existing sessions are invalidated after a successful restore. Uploads are limited to 256 MiB.
+      security: [{sessionCookie: []}]
+      parameters:
+        - {$ref: "#/components/parameters/CsrfToken"}
+        - {$ref: "#/components/parameters/IdempotencyKey"}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [eventId, confirmation, databaseFile]
+              properties:
+                eventId:
+                  type: integer
+                  description: ID of the currently loaded event, not the uploaded event.
+                confirmation: {type: string, const: restore}
+                databaseFile: {type: string, format: binary}
+      responses:
+        "200":
+          description: Database restored, or the original result when replayed
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/DatabaseRestoreResponse"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "413":
+          description: Upload exceeds 256 MiB
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorResponse"}
+        "422": {$ref: "#/components/responses/ValidationError"}
   /admin/tournament-data/{type}:
     parameters:
       - in: path
@@ -1099,6 +1135,18 @@ components:
       required: [data, meta]
       properties:
         data: {$ref: "#/components/schemas/DatabaseBackupResult"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    DatabaseRestoreResult:
+      type: object
+      required: [restored, replayed]
+      properties:
+        restored: {type: boolean}
+        replayed: {type: boolean}
+    DatabaseRestoreResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/DatabaseRestoreResult"}
         meta: {$ref: "#/components/schemas/ResponseMeta"}
     TournamentDataClearInput:
       type: object

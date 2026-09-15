@@ -100,6 +100,7 @@ func (web *Web) registerApiV1Routes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/admin/settings/{section}", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AdminSettingsHandler)))
 	mux.Handle("PATCH /api/v1/admin/settings/{section}", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminSettingsUpdateHandler)))
 	mux.Handle("POST /api/v1/admin/database/backups", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminDatabaseBackupHandler)))
+	mux.Handle("POST /api/v1/admin/database/restore", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminDatabaseRestoreHandler)))
 	mux.Handle("DELETE /api/v1/admin/tournament-data/{type}", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminTournamentDataClearHandler)))
 }
 

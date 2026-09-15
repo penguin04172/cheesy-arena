@@ -3,6 +3,9 @@
 package web
 
 import (
+	"bytes"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -67,9 +70,66 @@ func TestApiV1AdminIdempotencyKeyCannotChangeOperation(t *testing.T) {
 	assert.Contains(t, clear.Body.String(), "idempotency_key_reused")
 }
 
+func TestApiV1AdminDatabaseRestoreAndReplay(t *testing.T) {
+	web := setupTestWeb(t)
+	web.arena.EventSettings.Name = "Restored Event"
+	require.NoError(t, web.arena.Database.UpdateEventSettings(web.arena.EventSettings))
+	backup := new(bytes.Buffer)
+	require.NoError(t, web.arena.Database.WriteBackup(backup))
+	web.arena.EventSettings.Name = "Current Event"
+	require.NoError(t, web.arena.Database.UpdateEventSettings(web.arena.EventSettings))
+	require.NoError(t, web.arena.LoadSettings())
+
+	fields := map[string]string{"eventId": strconv.Itoa(web.arena.EventSettings.Id), "confirmation": "restore"}
+	restored := apiV1AdminRestoreRequest(web, "restore-1", fields, backup.Bytes())
+	require.Equal(t, http.StatusOK, restored.Code, restored.Body.String())
+	assert.Equal(t, "Restored Event", web.arena.EventSettings.Name)
+	assert.Contains(t, restored.Body.String(), `"restored":true`)
+
+	replayed := apiV1AdminIdempotentRequest(web, http.MethodPost, "/api/v1/admin/database/restore", "restore-1", "")
+	assert.Equal(t, http.StatusOK, replayed.Code)
+	assert.Contains(t, replayed.Body.String(), `"replayed":true`)
+}
+
+func TestApiV1AdminDatabaseRestoreRejectsInvalidUpload(t *testing.T) {
+	web := setupTestWeb(t)
+	fields := map[string]string{"eventId": strconv.Itoa(web.arena.EventSettings.Id), "confirmation": "restore"}
+	recorder := apiV1AdminRestoreRequest(web, "restore-invalid", fields, []byte("invalid"))
+	assert.Equal(t, http.StatusUnprocessableEntity, recorder.Code)
+	assert.Contains(t, recorder.Body.String(), "invalid_database_backup")
+}
+
+func TestApiV1AdminDatabaseRestoreRequiresConfirmation(t *testing.T) {
+	web := setupTestWeb(t)
+	backup := new(bytes.Buffer)
+	require.NoError(t, web.arena.Database.WriteBackup(backup))
+	recorder := apiV1AdminRestoreRequest(web, "restore-confirm", map[string]string{"eventId": "1"}, backup.Bytes())
+	assert.Equal(t, http.StatusUnprocessableEntity, recorder.Code)
+	assert.Contains(t, recorder.Body.String(), "confirmation_mismatch")
+}
+
 func apiV1AdminIdempotentRequest(web *Web, method, path, key, body string) *httptest.ResponseRecorder {
 	request := httptest.NewRequest(method, path, strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("X-CSRF-Token", "test-csrf-token")
+	request.Header.Set("Idempotency-Key", key)
+	request.AddCookie(&http.Cookie{Name: csrfTokenCookie, Value: "test-csrf-token"})
+	recorder := httptest.NewRecorder()
+	web.newHandler().ServeHTTP(recorder, request)
+	return recorder
+}
+
+func apiV1AdminRestoreRequest(web *Web, key string, fields map[string]string, contents []byte) *httptest.ResponseRecorder {
+	body := new(bytes.Buffer)
+	writer := multipart.NewWriter(body)
+	for name, value := range fields {
+		_ = writer.WriteField(name, value)
+	}
+	part, _ := writer.CreateFormFile("databaseFile", "backup.db")
+	_, _ = io.Copy(part, bytes.NewReader(contents))
+	_ = writer.Close()
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/admin/database/restore", body)
+	request.Header.Set("Content-Type", writer.FormDataContentType())
 	request.Header.Set("X-CSRF-Token", "test-csrf-token")
 	request.Header.Set("Idempotency-Key", key)
 	request.AddCookie(&http.Cookie{Name: csrfTokenCookie, Value: "test-csrf-token"})
