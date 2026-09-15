@@ -711,6 +711,19 @@ paths:
               schema: {$ref: "#/components/schemas/PublishingResponse"}
         "409": {$ref: "#/components/responses/Conflict"}
         "422": {$ref: "#/components/responses/ValidationError"}
+  /admin/match-play/matches:
+    get:
+      operationId: listAdminMatchPlayMatches
+      summary: Get the match selector data formerly rendered as an HTML fragment
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Match selector groups and active tab
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MatchPlayMatchesResponse"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
 components:
   securitySchemes:
     sessionCookie:
@@ -1206,6 +1219,37 @@ components:
       required: [data, meta]
       properties:
         data: {$ref: "#/components/schemas/PublishingResult"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    MatchPlayListItem:
+      type: object
+      required: [id, shortName, scheduledAt, displayTime, status, colorClass, canShowResult]
+      properties:
+        id: {type: integer}
+        shortName: {type: string}
+        scheduledAt:
+          type: string
+          description: RFC 3339, or empty when the match has no scheduled time.
+        displayTime: {type: string, description: Localized legacy display string.}
+        status: {$ref: "#/components/schemas/MatchStatus"}
+        colorClass: {type: string, enum: ["", red, blue, yellow, green]}
+        canShowResult: {type: boolean}
+    MatchPlayMatches:
+      type: object
+      required: [currentMatchType, matchesByType]
+      properties:
+        currentMatchType: {type: string, enum: [practice, qualification, playoff]}
+        matchesByType:
+          type: object
+          required: [practice, qualification, playoff]
+          properties:
+            practice: {type: array, items: {$ref: "#/components/schemas/MatchPlayListItem"}}
+            qualification: {type: array, items: {$ref: "#/components/schemas/MatchPlayListItem"}}
+            playoff: {type: array, items: {$ref: "#/components/schemas/MatchPlayListItem"}}
+    MatchPlayMatchesResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/MatchPlayMatches"}
         meta: {$ref: "#/components/schemas/ResponseMeta"}
     GameSettings:
       type: object

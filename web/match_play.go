@@ -21,11 +21,12 @@ import (
 )
 
 type MatchPlayListItem struct {
-	Id         int
-	ShortName  string
-	Time       string
-	Status     game.MatchStatus
-	ColorClass string
+	Id          int
+	ShortName   string
+	Time        string
+	ScheduledAt time.Time
+	Status      game.MatchStatus
+	ColorClass  string
 }
 
 const defaultTimeoutDescription = "Field Break"
@@ -66,31 +67,13 @@ func (web *Web) matchPlayMatchLoadHandler(w http.ResponseWriter, r *http.Request
 	if !web.userIsAdmin(w, r) {
 		return
 	}
+	w.Header().Set("Deprecation", "true")
+	w.Header().Set("Link", "</api/v1/admin/match-play/matches>; rel=\"successor-version\"")
 
-	practiceMatches, err := web.buildMatchPlayList(model.Practice)
+	snapshot, err := web.buildMatchPlayMatchListSnapshot()
 	if err != nil {
 		handleWebErr(w, err)
 		return
-	}
-	qualificationMatches, err := web.buildMatchPlayList(model.Qualification)
-	if err != nil {
-		handleWebErr(w, err)
-		return
-	}
-	playoffMatches, err := web.buildMatchPlayList(model.Playoff)
-	if err != nil {
-		handleWebErr(w, err)
-		return
-	}
-
-	matchesByType := map[model.MatchType]MatchPlayList{
-		model.Practice:      practiceMatches,
-		model.Qualification: qualificationMatches,
-		model.Playoff:       playoffMatches,
-	}
-	currentMatchType := web.arena.CurrentMatch.Type
-	if currentMatchType == model.Test {
-		currentMatchType = model.Practice
 	}
 
 	template, err := web.parseFiles("templates/match_play_match_load.html")
@@ -102,8 +85,8 @@ func (web *Web) matchPlayMatchLoadHandler(w http.ResponseWriter, r *http.Request
 		MatchesByType    map[model.MatchType]MatchPlayList
 		CurrentMatchType model.MatchType
 	}{
-		matchesByType,
-		currentMatchType,
+		snapshot.MatchesByType,
+		snapshot.CurrentMatchType,
 	}
 	err = template.ExecuteTemplate(w, "match_play_match_load.html", data)
 	if err != nil {
@@ -573,6 +556,7 @@ func (web *Web) buildMatchPlayList(matchType model.MatchType) (MatchPlayList, er
 		matchPlayList[i].Id = match.Id
 		matchPlayList[i].ShortName = match.ShortName
 		matchPlayList[i].Time = match.Time.Local().Format("3:04 PM")
+		matchPlayList[i].ScheduledAt = match.Time
 		matchPlayList[i].Status = match.Status
 		switch match.Status {
 		case game.RedWonMatch:
@@ -593,4 +577,25 @@ func (web *Web) buildMatchPlayList(matchType model.MatchType) (MatchPlayList, er
 	sort.Stable(matchPlayList)
 
 	return matchPlayList, nil
+}
+
+type matchPlayMatchListSnapshot struct {
+	MatchesByType    map[model.MatchType]MatchPlayList
+	CurrentMatchType model.MatchType
+}
+
+func (web *Web) buildMatchPlayMatchListSnapshot() (matchPlayMatchListSnapshot, error) {
+	matchesByType := make(map[model.MatchType]MatchPlayList, 3)
+	for _, matchType := range []model.MatchType{model.Practice, model.Qualification, model.Playoff} {
+		matches, err := web.buildMatchPlayList(matchType)
+		if err != nil {
+			return matchPlayMatchListSnapshot{}, err
+		}
+		matchesByType[matchType] = matches
+	}
+	currentMatchType := web.arena.CurrentMatch.Type
+	if currentMatchType == model.Test {
+		currentMatchType = model.Practice
+	}
+	return matchPlayMatchListSnapshot{MatchesByType: matchesByType, CurrentMatchType: currentMatchType}, nil
 }

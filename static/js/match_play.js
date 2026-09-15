@@ -319,9 +319,13 @@ const handleArenaStatus = function (data) {
 const handleMatchLoad = function (data) {
   isReplay = data.IsReplay;
 
-  fetch("/match_play/match_load")
-    .then(response => response.text())
-    .then(html => $("#matchListColumn").html(html));
+  fetch("/api/v1/admin/match-play/matches")
+    .then(response => {
+      if (!response.ok) throw new Error(`Unable to load matches (${response.status})`);
+      return response.json();
+    })
+    .then(response => renderMatchPlayList(response.data))
+    .catch(error => console.error(error));
 
   $("#matchName").text(data.Match.LongName);
   $("#testMatchName").val(data.Match.LongName);
@@ -341,6 +345,54 @@ const handleMatchLoad = function (data) {
   $("#introRadio").prop("disabled", false);
   $("#muteMatchSounds").prop("checked", false);
 }
+
+const renderMatchPlayList = function (data) {
+  const container = $("#matchListColumn").empty();
+  $("<b>", {class: "btn btn-primary", text: "Load Test Match"})
+    .on("click", () => loadMatch(0))
+    .appendTo(container);
+
+  const types = [
+    {key: "practice", label: "Practice"},
+    {key: "qualification", label: "Qualification"},
+    {key: "playoff", label: "Playoff"},
+  ];
+  const tabs = $("<ul>", {class: "nav nav-tabs mt-4"}).appendTo(container);
+  const content = $("<div>", {class: "tab-content"}).appendTo(container);
+  types.forEach(type => {
+    const active = data.currentMatchType === type.key;
+    const tab = $("<a>", {
+      class: `nav-link${active ? " active" : ""}`,
+      href: `#${type.label}`,
+      text: type.label,
+      "data-bs-toggle": "tab",
+    });
+    $("<li>").append(tab).appendTo(tabs);
+    const pane = $("<div>", {
+      class: `match-list tab-pane${active ? " active" : ""}`,
+      id: type.label,
+    }).appendTo(content);
+    const table = $("<table>", {class: "table table-striped table-hover"}).appendTo(pane);
+    $("<thead>").append($("<tr>")
+      .append($("<th>").text("Match"), $("<th>").text("Time"), $("<th>").text("Action")))
+      .appendTo(table);
+    const body = $("<tbody>").appendTo(table);
+    (data.matchesByType[type.key] || []).forEach(match => {
+      const row = $("<tr>").appendTo(body);
+      const colorClass = match.colorClass ? `bg-${match.colorClass}` : "";
+      $("<td>", {class: colorClass, text: match.shortName}).appendTo(row);
+      $("<td>", {class: colorClass, text: match.displayTime}).appendTo(row);
+      const actions = $("<td>", {class: `${colorClass} nowrap`}).appendTo(row);
+      $("<b>", {class: "btn btn-primary btn-sm", text: "Load"})
+        .on("click", () => loadMatch(match.id)).appendTo(actions);
+      if (match.canShowResult) {
+        actions.append(document.createTextNode(" "));
+        $("<b>", {class: "btn btn-primary btn-sm", text: "Show Result"})
+          .on("click", () => showResult(match.id)).appendTo(actions);
+      }
+    });
+  });
+};
 
 // Handles a websocket message to update the match time countdown.
 const handleMatchTime = function (data) {

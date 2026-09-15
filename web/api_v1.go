@@ -103,6 +103,7 @@ func (web *Web) registerApiV1Routes(mux *http.ServeMux) {
 	mux.Handle("POST /api/v1/admin/database/restore", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminDatabaseRestoreHandler)))
 	mux.Handle("DELETE /api/v1/admin/tournament-data/{type}", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminTournamentDataClearHandler)))
 	mux.Handle("POST /api/v1/admin/publishing/{resource}", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminPublishingHandler)))
+	mux.Handle("GET /api/v1/admin/match-play/matches", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AdminMatchPlayMatchesHandler)))
 }
 
 func (web *Web) apiV1AdminRead(next http.Handler) http.Handler {
