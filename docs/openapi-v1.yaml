@@ -724,6 +724,16 @@ paths:
               schema: {$ref: "#/components/schemas/MatchPlayMatchesResponse"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
+  /displays/queueing/matches:
+    get:
+      operationId: listQueueingDisplayMatches
+      summary: Get the upcoming match cards for the queueing display
+      responses:
+        "200":
+          description: Queueing display match cards in display order
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/QueueingDisplayMatchesResponse"}
 components:
   securitySchemes:
     sessionCookie:
@@ -1250,6 +1260,33 @@ components:
       required: [data, meta]
       properties:
         data: {$ref: "#/components/schemas/MatchPlayMatches"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    QueueingDisplayAlliance:
+      type: object
+      required: [teamIds, offFieldTeamIds, playoffAllianceId]
+      properties:
+        teamIds: {type: array, items: {type: integer}}
+        offFieldTeamIds: {type: array, items: {type: integer}}
+        playoffAllianceId: {type: integer, minimum: 0}
+    QueueingDisplayMatch:
+      type: object
+      required: [position, positionLabel, id, shortName, scheduledAt, displayTime, red, blue]
+      properties:
+        position: {type: string, pattern: "^(on_field|on_deck|up_in_[0-9]+)$"}
+        positionLabel: {type: string}
+        id: {type: integer}
+        shortName: {type: string}
+        scheduledAt:
+          type: string
+          description: RFC 3339, or empty when the match has no scheduled time.
+        displayTime: {type: string, description: Localized legacy display string.}
+        red: {$ref: "#/components/schemas/QueueingDisplayAlliance"}
+        blue: {$ref: "#/components/schemas/QueueingDisplayAlliance"}
+    QueueingDisplayMatchesResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {type: array, items: {$ref: "#/components/schemas/QueueingDisplayMatch"}}
         meta: {$ref: "#/components/schemas/ResponseMeta"}
     GameSettings:
       type: object

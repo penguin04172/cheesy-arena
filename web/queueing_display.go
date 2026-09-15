@@ -44,10 +44,33 @@ func (web *Web) queueingDisplayHandler(w http.ResponseWriter, r *http.Request) {
 
 // Renders a partial template containing the list of matches.
 func (web *Web) queueingDisplayMatchLoadHandler(w http.ResponseWriter, r *http.Request) {
-	matches, err := web.arena.Database.GetMatchesByType(web.arena.CurrentMatch.Type, false)
+	data, err := web.buildQueueingDisplayMatchList()
 	if err != nil {
 		handleWebErr(w, err)
 		return
+	}
+	w.Header().Set("Deprecation", "true")
+	w.Header().Set("Link", "</api/v1/displays/queueing/matches>; rel=\"successor-version\"")
+	template, err := web.parseFiles("templates/queueing_display_match_load.html")
+	if err != nil {
+		handleWebErr(w, err)
+		return
+	}
+	if err = template.ExecuteTemplate(w, "queueing_display_match_load.html", data); err != nil {
+		handleWebErr(w, err)
+	}
+}
+
+type queueingDisplayMatchList struct {
+	Matches           []model.Match
+	RedOffFieldTeams  [][]int
+	BlueOffFieldTeams [][]int
+}
+
+func (web *Web) buildQueueingDisplayMatchList() (queueingDisplayMatchList, error) {
+	matches, err := web.arena.Database.GetMatchesByType(web.arena.CurrentMatch.Type, false)
+	if err != nil {
+		return queueingDisplayMatchList{}, err
 	}
 
 	numMatchesToShow := numNonPlayoffMatchesToShow
@@ -55,12 +78,9 @@ func (web *Web) queueingDisplayMatchLoadHandler(w http.ResponseWriter, r *http.R
 		numMatchesToShow = numPlayoffMatchesToShow
 	}
 
-	var upcomingMatches []model.Match
-	var redOffFieldTeamsByMatch, blueOffFieldTeamsByMatch [][]int
-	if err != nil {
-		handleWebErr(w, err)
-		return
-	}
+	upcomingMatches := make([]model.Match, 0, numMatchesToShow)
+	redOffFieldTeamsByMatch := make([][]int, 0, numMatchesToShow)
+	blueOffFieldTeamsByMatch := make([][]int, 0, numMatchesToShow)
 	for i, match := range matches {
 		if match.IsComplete() || match.TypeOrder < web.arena.CurrentMatch.TypeOrder {
 			continue
@@ -68,8 +88,7 @@ func (web *Web) queueingDisplayMatchLoadHandler(w http.ResponseWriter, r *http.R
 		upcomingMatches = append(upcomingMatches, match)
 		redOffFieldTeams, blueOffFieldTeams, err := web.arena.Database.GetOffFieldTeamIds(&match)
 		if err != nil {
-			handleWebErr(w, err)
-			return
+			return queueingDisplayMatchList{}, err
 		}
 		redOffFieldTeamsByMatch = append(redOffFieldTeamsByMatch, redOffFieldTeams)
 		blueOffFieldTeamsByMatch = append(blueOffFieldTeamsByMatch, blueOffFieldTeams)
@@ -84,26 +103,11 @@ func (web *Web) queueingDisplayMatchLoadHandler(w http.ResponseWriter, r *http.R
 		}
 	}
 
-	template, err := web.parseFiles("templates/queueing_display_match_load.html")
-	if err != nil {
-		handleWebErr(w, err)
-		return
-	}
-
-	data := struct {
-		Matches           []model.Match
-		RedOffFieldTeams  [][]int
-		BlueOffFieldTeams [][]int
-	}{
-		upcomingMatches,
-		redOffFieldTeamsByMatch,
-		blueOffFieldTeamsByMatch,
-	}
-	err = template.ExecuteTemplate(w, "queueing_display_match_load.html", data)
-	if err != nil {
-		handleWebErr(w, err)
-		return
-	}
+	return queueingDisplayMatchList{
+		Matches:           upcomingMatches,
+		RedOffFieldTeams:  redOffFieldTeamsByMatch,
+		BlueOffFieldTeams: blueOffFieldTeamsByMatch,
+	}, nil
 }
 
 // The websocket endpoint for the queueing display to receive updates.
