@@ -21,6 +21,7 @@ type apiV1State struct {
 	destructiveMu  sync.Mutex
 	idempotencyMu  sync.Mutex
 	idempotency    map[string]apiV1IdempotencyRecord
+	publishingMu   sync.Mutex
 }
 
 type apiV1IdempotencyRecord struct {

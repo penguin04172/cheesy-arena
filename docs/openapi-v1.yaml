@@ -690,6 +690,27 @@ paths:
               schema: {$ref: "#/components/schemas/TournamentDataClearResponse"}
         "409": {$ref: "#/components/responses/Conflict"}
         "422": {$ref: "#/components/responses/ValidationError"}
+  /admin/publishing/{resource}:
+    parameters:
+      - in: path
+        name: resource
+        required: true
+        schema: {type: string, enum: [teams, matches, rankings, alliances, awards]}
+    post:
+      operationId: publishAdminResource
+      summary: Start an idempotent background TBA publishing job
+      security: [{sessionCookie: []}]
+      parameters:
+        - {$ref: "#/components/parameters/CsrfToken"}
+        - {$ref: "#/components/parameters/IdempotencyKey"}
+      responses:
+        "202":
+          description: Publishing job accepted
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PublishingResponse"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/ValidationError"}
 components:
   securitySchemes:
     sessionCookie:
@@ -878,7 +899,7 @@ components:
       required: [id, type, status, progress, error, createdAt, startedAt, completedAt]
       properties:
         id: {type: string, format: uuid}
-        type: {type: string, enum: [team_import, team_refresh]}
+        type: {type: string, enum: [team_import, team_refresh, publish_teams, publish_matches, publish_rankings, publish_alliances, publish_awards]}
         status: {type: string, enum: [queued, running, succeeded, failed]}
         progress: {type: integer, minimum: 0, maximum: 100}
         error: {type: [string, "null"]}
@@ -1173,6 +1194,18 @@ components:
       required: [data, meta]
       properties:
         data: {$ref: "#/components/schemas/TournamentDataClearResult"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    PublishingResult:
+      type: object
+      required: [job, replayed]
+      properties:
+        job: {$ref: "#/components/schemas/AdminJob"}
+        replayed: {type: boolean}
+    PublishingResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/PublishingResult"}
         meta: {$ref: "#/components/schemas/ResponseMeta"}
     GameSettings:
       type: object
