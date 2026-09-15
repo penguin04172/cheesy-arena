@@ -28,17 +28,7 @@ func CreateOrUpdateAward(database *model.Database, award *model.Award, createInt
 		}
 	}
 
-	var err error
-	if award.Id == 0 {
-		err = database.CreateAward(award)
-	} else {
-		err = database.UpdateAward(award)
-	}
-	if err != nil {
-		return err
-	}
-
-	// Create or update associated lower thirds.
+	// Create or update the award and associated lower thirds atomically.
 	awardIntroLowerThird := model.LowerThird{TopText: award.AwardName, AwardId: award.Id}
 	awardWinnerLowerThird := model.LowerThird{
 		TopText: award.AwardName, BottomText: award.PersonName, AwardId: award.Id,
@@ -55,42 +45,17 @@ func CreateOrUpdateAward(database *model.Database, award *model.Award, createInt
 	if awardWinnerLowerThird.BottomText == "" {
 		awardWinnerLowerThird.BottomText = "(No awardee assigned yet)"
 	}
-	lowerThirds, err := database.GetLowerThirdsByAwardId(award.Id)
-	if err != nil {
-		return err
-	}
-	bottomIndex := 0
+	desiredLowerThirds := make([]model.LowerThird, 0, 2)
 	if createIntroLowerThird {
-		if err = createOrUpdateAwardLowerThird(database, &awardIntroLowerThird, lowerThirds, 0); err != nil {
-			return err
-		}
-		bottomIndex++
+		desiredLowerThirds = append(desiredLowerThirds, awardIntroLowerThird)
 	}
-	if err = createOrUpdateAwardLowerThird(database, &awardWinnerLowerThird, lowerThirds, bottomIndex); err != nil {
-		return err
-	}
-
-	return nil
+	desiredLowerThirds = append(desiredLowerThirds, awardWinnerLowerThird)
+	return database.SaveAwardWithLowerThirds(award, desiredLowerThirds)
 }
 
 // Deletes the given award and any associated lower thirds.
 func DeleteAward(database *model.Database, awardId int) error {
-	if err := database.DeleteAward(awardId); err != nil {
-		return err
-	}
-
-	// Delete lower thirds.
-	lowerThirds, err := database.GetLowerThirdsByAwardId(awardId)
-	if err != nil {
-		return err
-	}
-	for _, lowerThird := range lowerThirds {
-		if err = database.DeleteLowerThird(lowerThird.Id); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return database.DeleteAwardWithLowerThirds(awardId)
 }
 
 // Generates awards and lower thirds for the tournament winners and finalists.
@@ -160,20 +125,4 @@ func CreateOrUpdateWinnerAndFinalistAwards(database *model.Database, winnerAllia
 	}
 
 	return nil
-}
-
-func createOrUpdateAwardLowerThird(
-	database *model.Database,
-	lowerThird *model.LowerThird,
-	existingLowerThirds []model.LowerThird,
-	index int,
-) error {
-	if index < len(existingLowerThirds) {
-		lowerThird.Id = existingLowerThirds[index].Id
-		lowerThird.DisplayOrder = existingLowerThirds[index].DisplayOrder
-		return database.UpdateLowerThird(lowerThird)
-	} else {
-		lowerThird.DisplayOrder = database.GetNextLowerThirdDisplayOrder()
-		return database.CreateLowerThird(lowerThird)
-	}
 }

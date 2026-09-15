@@ -281,16 +281,9 @@ func (web *Web) apiV1AdminSponsorSlideReorderHandler(w http.ResponseWriter, r *h
 		writeApiV1Error(w, r, http.StatusUnprocessableEntity, "invalid_order", message, nil)
 		return
 	}
-	byId := make(map[int]*model.SponsorSlide, len(slides))
-	for index := range slides {
-		byId[slides[index].Id] = &slides[index]
-	}
-	for index, id := range input.Ids {
-		byId[id].DisplayOrder = index + 1
-		if err = web.arena.Database.UpdateSponsorSlide(byId[id]); err != nil {
-			writeApiV1Error(w, r, http.StatusInternalServerError, "database_error", "Unable to reorder sponsor slides.", nil)
-			return
-		}
+	if err = web.arena.Database.ReorderSponsorSlides(input.Ids); err != nil {
+		writeApiV1Error(w, r, http.StatusInternalServerError, "database_error", "Unable to reorder sponsor slides.", nil)
+		return
 	}
 	web.logApiV1Audit(r, "sponsor_slide.reorder", "all", "success")
 	web.apiV1SponsorSlidesHandler(w, r)
@@ -389,16 +382,9 @@ func (web *Web) apiV1AdminLowerThirdReorderHandler(w http.ResponseWriter, r *htt
 		writeApiV1Error(w, r, http.StatusUnprocessableEntity, "invalid_order", message, nil)
 		return
 	}
-	byId := make(map[int]*model.LowerThird, len(lowerThirds))
-	for index := range lowerThirds {
-		byId[lowerThirds[index].Id] = &lowerThirds[index]
-	}
-	for index, id := range input.Ids {
-		byId[id].DisplayOrder = index + 1
-		if err = web.arena.Database.UpdateLowerThird(byId[id]); err != nil {
-			writeApiV1Error(w, r, http.StatusInternalServerError, "database_error", "Unable to reorder lower thirds.", nil)
-			return
-		}
+	if err = web.arena.Database.ReorderLowerThirds(input.Ids); err != nil {
+		writeApiV1Error(w, r, http.StatusInternalServerError, "database_error", "Unable to reorder lower thirds.", nil)
+		return
 	}
 	web.logApiV1Audit(r, "lower_third.reorder", "all", "success")
 	web.apiV1AdminLowerThirdsHandler(w, r)
