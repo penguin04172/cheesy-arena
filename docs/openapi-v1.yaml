@@ -211,8 +211,285 @@ paths:
               schema:
                 type: string
                 contentEncoding: binary
+  /admin/awards:
+    get:
+      operationId: listAdminAwards
+      summary: List awards for administration
+      security: [{sessionCookie: []}]
+      responses:
+        "200": {$ref: "#/components/responses/AdminAwardList"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+    post:
+      operationId: createAdminAward
+      summary: Create a judged award
+      security: [{sessionCookie: []}]
+      parameters: [{$ref: "#/components/parameters/CsrfToken"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/AdminAwardInput"}
+      responses:
+        "201": {$ref: "#/components/responses/AdminAwardItem"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+  /admin/awards/{id}:
+    parameters: [{$ref: "#/components/parameters/ResourceId"}]
+    patch:
+      operationId: updateAdminAward
+      summary: Update a judged award
+      security: [{sessionCookie: []}]
+      parameters: [{$ref: "#/components/parameters/CsrfToken"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/AdminAwardInput"}
+      responses:
+        "200": {$ref: "#/components/responses/AdminAwardItem"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+    delete:
+      operationId: deleteAdminAward
+      summary: Delete a judged award
+      security: [{sessionCookie: []}]
+      parameters: [{$ref: "#/components/parameters/CsrfToken"}]
+      responses:
+        "204": {description: Award deleted}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /admin/scheduled-breaks:
+    get:
+      operationId: listAdminScheduledBreaks
+      summary: List scheduled breaks for administration
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Scheduled breaks
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AdminScheduledBreakListResponse"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /admin/scheduled-breaks/{id}:
+    parameters: [{$ref: "#/components/parameters/ResourceId"}]
+    patch:
+      operationId: updateAdminScheduledBreak
+      summary: Update the description of a scheduled break
+      security: [{sessionCookie: []}]
+      parameters: [{$ref: "#/components/parameters/CsrfToken"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/AdminScheduledBreakInput"}
+      responses:
+        "200":
+          description: Updated scheduled break
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AdminScheduledBreakResponse"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /admin/sponsor-slides:
+    get:
+      operationId: listAdminSponsorSlides
+      summary: List sponsor slides for administration
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Sponsor slides
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SponsorSlideListResponse"}
+    post:
+      operationId: createAdminSponsorSlide
+      summary: Create a sponsor slide
+      security: [{sessionCookie: []}]
+      parameters: [{$ref: "#/components/parameters/CsrfToken"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/AdminSponsorSlideInput"}
+      responses:
+        "201":
+          description: Created sponsor slide
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SponsorSlideResponse"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+  /admin/sponsor-slides/{id}:
+    parameters: [{$ref: "#/components/parameters/ResourceId"}]
+    patch:
+      operationId: updateAdminSponsorSlide
+      summary: Update a sponsor slide
+      security: [{sessionCookie: []}]
+      parameters: [{$ref: "#/components/parameters/CsrfToken"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/AdminSponsorSlideInput"}
+      responses:
+        "200":
+          description: Updated sponsor slide
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SponsorSlideResponse"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+    delete:
+      operationId: deleteAdminSponsorSlide
+      summary: Delete a sponsor slide
+      security: [{sessionCookie: []}]
+      parameters: [{$ref: "#/components/parameters/CsrfToken"}]
+      responses:
+        "204": {description: Sponsor slide deleted}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /admin/sponsor-slides/reorder:
+    post:
+      operationId: reorderAdminSponsorSlides
+      summary: Replace the display order of all sponsor slides
+      security: [{sessionCookie: []}]
+      parameters: [{$ref: "#/components/parameters/CsrfToken"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/AdminReorderInput"}
+      responses:
+        "200":
+          description: Reordered sponsor slides
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SponsorSlideListResponse"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+  /admin/lower-thirds:
+    get:
+      operationId: listAdminLowerThirds
+      summary: List lower thirds for administration
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Lower thirds
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AdminLowerThirdListResponse"}
+    post:
+      operationId: createAdminLowerThird
+      summary: Create a lower third
+      security: [{sessionCookie: []}]
+      parameters: [{$ref: "#/components/parameters/CsrfToken"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/AdminLowerThirdInput"}
+      responses:
+        "201": {$ref: "#/components/responses/AdminLowerThirdItem"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+  /admin/lower-thirds/{id}:
+    parameters: [{$ref: "#/components/parameters/ResourceId"}]
+    patch:
+      operationId: updateAdminLowerThird
+      summary: Update a lower third
+      security: [{sessionCookie: []}]
+      parameters: [{$ref: "#/components/parameters/CsrfToken"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/AdminLowerThirdInput"}
+      responses:
+        "200": {$ref: "#/components/responses/AdminLowerThirdItem"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+    delete:
+      operationId: deleteAdminLowerThird
+      summary: Delete a lower third
+      security: [{sessionCookie: []}]
+      parameters: [{$ref: "#/components/parameters/CsrfToken"}]
+      responses:
+        "204": {description: Lower third deleted}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /admin/lower-thirds/reorder:
+    post:
+      operationId: reorderAdminLowerThirds
+      summary: Replace the display order of all lower thirds
+      security: [{sessionCookie: []}]
+      parameters: [{$ref: "#/components/parameters/CsrfToken"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/AdminReorderInput"}
+      responses:
+        "200":
+          description: Reordered lower thirds
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AdminLowerThirdListResponse"}
+        "422": {$ref: "#/components/responses/ValidationError"}
 components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session_token
+  parameters:
+    ResourceId:
+      in: path
+      name: id
+      required: true
+      schema: {type: integer, minimum: 1}
+    CsrfToken:
+      in: header
+      name: X-CSRF-Token
+      required: true
+      schema: {type: string}
   responses:
+    BadRequest:
+      description: Malformed request
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/ErrorResponse"}
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/ErrorResponse"}
+    Forbidden:
+      description: Administrator permission or a valid CSRF token is required
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/ErrorResponse"}
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/ErrorResponse"}
+    ValidationError:
+      description: Request failed business validation
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/ErrorResponse"}
+    AdminAwardList:
+      description: Awards
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/AdminAwardListResponse"}
+    AdminAwardItem:
+      description: Award
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/AdminAwardResponse"}
+    AdminLowerThirdItem:
+      description: Lower third
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/AdminLowerThirdResponse"}
     InternalError:
       description: Unexpected server error
       content:
@@ -220,6 +497,111 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
   schemas:
+    AdminAwardInput:
+      type: object
+      additionalProperties: false
+      required: [awardName, teamId, personName]
+      properties:
+        awardName: {type: string, minLength: 1}
+        teamId: {type: integer}
+        personName: {type: string}
+    AdminAward:
+      allOf:
+        - {$ref: "#/components/schemas/AdminAwardInput"}
+        - type: object
+          required: [id]
+          properties:
+            id: {type: integer}
+    AdminAwardResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/AdminAward"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    AdminAwardListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {type: array, items: {$ref: "#/components/schemas/AdminAward"}}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    AdminScheduledBreakInput:
+      type: object
+      additionalProperties: false
+      required: [description]
+      properties:
+        description: {type: string}
+    AdminScheduledBreak:
+      type: object
+      required: [id, matchType, typeOrderBefore, time, durationSec, description]
+      properties:
+        id: {type: integer}
+        matchType: {$ref: "#/components/schemas/MatchType"}
+        typeOrderBefore: {type: integer}
+        time: {type: string, format: date-time}
+        durationSec: {type: integer, minimum: 0}
+        description: {type: string}
+    AdminScheduledBreakResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/AdminScheduledBreak"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    AdminScheduledBreakListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {type: array, items: {$ref: "#/components/schemas/AdminScheduledBreak"}}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    AdminSponsorSlideInput:
+      type: object
+      additionalProperties: false
+      required: [subtitle, line1, line2, image, displayTimeSec]
+      properties:
+        subtitle: {type: string}
+        line1: {type: string}
+        line2: {type: string}
+        image: {type: string}
+        displayTimeSec: {type: integer, minimum: 1}
+    SponsorSlideResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/SponsorSlide"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    AdminLowerThirdInput:
+      type: object
+      additionalProperties: false
+      required: [topText, bottomText]
+      properties:
+        topText: {type: string, minLength: 1}
+        bottomText: {type: string}
+    AdminLowerThird:
+      allOf:
+        - {$ref: "#/components/schemas/AdminLowerThirdInput"}
+        - type: object
+          required: [id, displayOrder, awardId]
+          properties:
+            id: {type: integer}
+            displayOrder: {type: integer}
+            awardId: {type: integer}
+    AdminLowerThirdResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/AdminLowerThird"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    AdminLowerThirdListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {type: array, items: {$ref: "#/components/schemas/AdminLowerThird"}}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    AdminReorderInput:
+      type: object
+      additionalProperties: false
+      required: [ids]
+      properties:
+        ids: {type: array, items: {type: integer}}
     MatchType:
       type: string
       enum: [test, practice, qualification, playoff]

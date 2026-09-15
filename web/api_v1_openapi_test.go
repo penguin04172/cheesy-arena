@@ -28,4 +28,12 @@ func TestApiV1OpenApiDocument(t *testing.T) {
 			assert.Contains(t, document.Paths[path], "get")
 		}
 	}
+	for _, path := range []string{
+		"/admin/awards", "/admin/awards/{id}",
+		"/admin/lower-thirds", "/admin/lower-thirds/{id}", "/admin/lower-thirds/reorder",
+		"/admin/scheduled-breaks", "/admin/scheduled-breaks/{id}",
+		"/admin/sponsor-slides", "/admin/sponsor-slides/{id}", "/admin/sponsor-slides/reorder",
+	} {
+		assert.Contains(t, document.Paths, path)
+	}
 }

@@ -12,6 +12,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 const maxApiV1RequestBodyBytes = 1024 * 1024
@@ -69,6 +70,30 @@ func (web *Web) registerApiV1Routes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/sponsor-slides", web.apiV1Middleware(http.HandlerFunc(web.apiV1SponsorSlidesHandler)))
 	mux.Handle("GET /api/v1/teams", web.apiV1Middleware(http.HandlerFunc(web.apiV1TeamsHandler)))
 	mux.Handle("GET /api/v1/teams/{teamId}/avatar", web.apiV1Middleware(http.HandlerFunc(web.apiV1TeamAvatarHandler)))
+	mux.Handle("GET /api/v1/admin/awards", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AdminAwardsHandler)))
+	mux.Handle("POST /api/v1/admin/awards", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminAwardCreateHandler)))
+	mux.Handle("PATCH /api/v1/admin/awards/{id}", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminAwardUpdateHandler)))
+	mux.Handle("DELETE /api/v1/admin/awards/{id}", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminAwardDeleteHandler)))
+	mux.Handle("GET /api/v1/admin/lower-thirds", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AdminLowerThirdsHandler)))
+	mux.Handle("POST /api/v1/admin/lower-thirds", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminLowerThirdCreateHandler)))
+	mux.Handle("PATCH /api/v1/admin/lower-thirds/{id}", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminLowerThirdUpdateHandler)))
+	mux.Handle("DELETE /api/v1/admin/lower-thirds/{id}", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminLowerThirdDeleteHandler)))
+	mux.Handle("POST /api/v1/admin/lower-thirds/reorder", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminLowerThirdReorderHandler)))
+	mux.Handle("GET /api/v1/admin/scheduled-breaks", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AdminScheduledBreaksHandler)))
+	mux.Handle("PATCH /api/v1/admin/scheduled-breaks/{id}", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminScheduledBreakUpdateHandler)))
+	mux.Handle("GET /api/v1/admin/sponsor-slides", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AdminSponsorSlidesHandler)))
+	mux.Handle("POST /api/v1/admin/sponsor-slides", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminSponsorSlideCreateHandler)))
+	mux.Handle("PATCH /api/v1/admin/sponsor-slides/{id}", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminSponsorSlideUpdateHandler)))
+	mux.Handle("DELETE /api/v1/admin/sponsor-slides/{id}", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminSponsorSlideDeleteHandler)))
+	mux.Handle("POST /api/v1/admin/sponsor-slides/reorder", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminSponsorSlideReorderHandler)))
+}
+
+func (web *Web) apiV1AdminRead(next http.Handler) http.Handler {
+	return web.apiV1Middleware(web.apiV1RequireAdmin(next))
+}
+
+func (web *Web) apiV1AdminMutation(next http.Handler) http.Handler {
+	return web.apiV1Middleware(web.apiV1RequireAdmin(web.apiV1RequireCsrf(next)))
 }
 
 func (web *Web) apiV1Middleware(next http.Handler) http.Handler {
@@ -141,4 +166,12 @@ func decodeApiV1Json(w http.ResponseWriter, r *http.Request, destination any) er
 func apiV1RequestId(r *http.Request) string {
 	requestId, _ := r.Context().Value(apiV1RequestIdKey).(string)
 	return requestId
+}
+
+func apiV1PathId(r *http.Request) (int, error) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil || id < 1 {
+		return 0, fmt.Errorf("ID must be a positive integer")
+	}
+	return id, nil
 }
