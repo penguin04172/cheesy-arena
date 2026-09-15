@@ -34,7 +34,14 @@ func (web *Web) loginPostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{Name: sessionTokenCookie, Value: session.Token})
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionTokenCookie,
+		Value:    session.Token,
+		Path:     "/",
+		Secure:   r.TLS != nil,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	})
 	redirectUrl := r.URL.Query().Get("redirect")
 	if redirectUrl == "" {
 		redirectUrl = "/"

@@ -128,6 +128,7 @@ func addNoCacheHeader(handler http.Handler) http.Handler {
 // Sets up the mapping between URLs and handlers.
 func (web *Web) newHandler() http.Handler {
 	mux := http.NewServeMux()
+	web.registerApiV1Routes(mux)
 	mux.HandleFunc("GET /", web.indexHandler)
 	mux.HandleFunc("GET /alliance_selection", web.allianceSelectionGetHandler)
 	mux.HandleFunc("POST /alliance_selection", web.allianceSelectionPostHandler)
