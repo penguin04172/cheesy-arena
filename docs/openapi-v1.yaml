@@ -1,0 +1,168 @@
+openapi: 3.1.0
+info:
+  title: Cheesy Arena API
+  version: 1.0.0-draft
+  description: >-
+    Versioned API introduced alongside the existing server-rendered interface.
+    This document is expanded as each migration phase is implemented.
+servers:
+  - url: /api/v1
+paths:
+  /event:
+    get:
+      operationId: getPublicEvent
+      summary: Get public event configuration
+      responses:
+        "200":
+          description: Public event configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicEventResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /session:
+    get:
+      operationId: getSession
+      summary: Get the current session state and CSRF token
+      responses:
+        "200":
+          description: Session state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+components:
+  responses:
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    ResponseMeta:
+      type: object
+      required:
+        - requestId
+      properties:
+        requestId:
+          type: string
+        version:
+          type: integer
+          minimum: 0
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - meta
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorDetail"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    MatchTiming:
+      type: object
+      required:
+        - autoDurationSec
+        - pauseDurationSec
+        - transitionShiftDurationSec
+        - shiftDurationSec
+        - endgameDurationSec
+      properties:
+        autoDurationSec:
+          type: integer
+          minimum: 0
+        pauseDurationSec:
+          type: integer
+          minimum: 0
+        transitionShiftDurationSec:
+          type: integer
+          minimum: 0
+        shiftDurationSec:
+          type: integer
+          minimum: 0
+        endgameDurationSec:
+          type: integer
+          minimum: 0
+    PublicEvent:
+      type: object
+      required:
+        - id
+        - name
+        - playoffType
+        - numPlayoffAlliances
+        - selectionShowUnpickedTeams
+        - networkSecurityEnabled
+        - matchTiming
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        playoffType:
+          type: string
+          enum:
+            - double_elimination
+            - single_elimination
+        numPlayoffAlliances:
+          type: integer
+          minimum: 2
+          maximum: 16
+        selectionShowUnpickedTeams:
+          type: boolean
+        networkSecurityEnabled:
+          type: boolean
+        matchTiming:
+          $ref: "#/components/schemas/MatchTiming"
+    PublicEventResponse:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: "#/components/schemas/PublicEvent"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    Session:
+      type: object
+      required:
+        - authenticated
+        - admin
+        - csrfToken
+      properties:
+        authenticated:
+          type: boolean
+        admin:
+          type: boolean
+        username:
+          type:
+            - string
+            - "null"
+        csrfToken:
+          type: string
+    SessionResponse:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: "#/components/schemas/Session"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
