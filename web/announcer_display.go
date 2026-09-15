@@ -35,6 +35,8 @@ func (web *Web) announcerDisplayHandler(w http.ResponseWriter, r *http.Request) 
 
 // Renders a partial template for when a new match is loaded.
 func (web *Web) announcerDisplayMatchLoadHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Deprecation", "true")
+	w.Header().Set("Link", "</api/v1/displays/announcer/match>; rel=\"successor-version\"")
 	template, err := web.parseFiles("templates/announcer_display_match_load.html")
 	if err != nil {
 		handleWebErr(w, err)

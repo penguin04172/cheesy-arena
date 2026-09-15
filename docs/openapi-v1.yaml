@@ -734,6 +734,16 @@ paths:
           content:
             application/json:
               schema: {$ref: "#/components/schemas/QueueingDisplayMatchesResponse"}
+  /displays/announcer/match:
+    get:
+      operationId: getAnnouncerDisplayMatch
+      summary: Get teams and rankings for the announcer display's current match
+      responses:
+        "200":
+          description: Current match announcer data
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AnnouncerDisplayMatchResponse"}
 components:
   securitySchemes:
     sessionCookie:
@@ -1287,6 +1297,47 @@ components:
       required: [data, meta]
       properties:
         data: {type: array, items: {$ref: "#/components/schemas/QueueingDisplayMatch"}}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    AnnouncerDisplayTeam:
+      type: object
+      required: [id, nickname, schoolName, city, stateProv, country, rookieYear, robotName, accomplishments, rank, isOffField]
+      properties:
+        id: {type: integer}
+        nickname: {type: string}
+        schoolName: {type: string}
+        city: {type: string}
+        stateProv: {type: string}
+        country: {type: string}
+        rookieYear: {type: integer}
+        robotName: {type: string}
+        accomplishments: {type: string}
+        rank: {type: [integer, "null"]}
+        isOffField: {type: boolean}
+    AnnouncerDisplayAlliance:
+      type: object
+      required: [playoffAllianceId, teams]
+      properties:
+        playoffAllianceId: {type: integer, minimum: 0}
+        teams:
+          type: array
+          items:
+            anyOf:
+              - {$ref: "#/components/schemas/AnnouncerDisplayTeam"}
+              - {type: "null"}
+    AnnouncerDisplayMatch:
+      type: object
+      required: [id, type, longName, red, blue]
+      properties:
+        id: {type: integer}
+        type: {type: string, enum: [test, practice, qualification, playoff]}
+        longName: {type: string}
+        red: {$ref: "#/components/schemas/AnnouncerDisplayAlliance"}
+        blue: {$ref: "#/components/schemas/AnnouncerDisplayAlliance"}
+    AnnouncerDisplayMatchResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/AnnouncerDisplayMatch"}
         meta: {$ref: "#/components/schemas/ResponseMeta"}
     GameSettings:
       type: object

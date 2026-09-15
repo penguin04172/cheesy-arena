@@ -31,9 +31,81 @@ var handleMatchLoad = function (data) {
   const teams = $("#teams");
   teams.empty();
 
-  fetch("/displays/announcer/match_load")
-    .then(response => response.text())
-    .then(html => teams.html(html));
+  fetch("/api/v1/displays/announcer/match")
+    .then(response => {
+      if (!response.ok) {
+        throw new Error("Unable to load announcer match data: " + response.status);
+      }
+      return response.json();
+    })
+    .then(response => renderAnnouncerMatch(response.data))
+    .catch(error => console.error(error));
+};
+
+const renderAnnouncerTeam = function (team) {
+  const row = $("<div>").addClass("row");
+  if (team === null) {
+    return row.append($("<div>").addClass("col-sm-12").append($("<h3>").append($("<b>").text("No team present"))));
+  }
+
+  const number = $("<h2>").append($("<b>").text(team.id));
+  if (team.isOffField) {
+    number.append($("<span>").css("font-size", "0.5em").text(" (not on field)"));
+  }
+  const detailsId = "team" + team.id + "Details";
+  const moreButton = $("<button>").attr("type", "button").addClass("btn btn-secondary btn-sm").text("More");
+  moreButton.on("click", function () { $("#" + detailsId).modal("show"); });
+  row.append(
+    $("<div>").addClass("col-sm-2").append(number),
+    $("<div>").addClass("col-sm-4").append($("<h2>").text(team.nickname)),
+    $("<div>").addClass("col-sm-2").append($("<h5>").text(team.schoolName)),
+    $("<div>").addClass("col-sm-3").append($("<div>").append($("<h5>").text([team.city, team.stateProv, team.country].join(", ")))),
+    $("<div>").addClass("col-sm-1").append($("<div>").addClass("row").append(
+      $("<div>").addClass("col-sm-6").text(team.rank === null ? "" : team.rank),
+      $("<div>").addClass("col-sm-6").append(moreButton),
+    )),
+  );
+
+  const modalBody = $("<div>").addClass("modal-body").append(
+    $("<div>").addClass("mb-3").append($("<b>").text("Rookie Year: "), document.createTextNode(team.rookieYear)),
+    $("<div>").addClass("mb-3").append($("<b>").text("Robot Name: "), document.createTextNode(team.robotName)),
+    $("<div>").addClass("mb-1").append($("<b>").text("Recent Accomplishments:")),
+    $("<div>").text(team.accomplishments),
+  );
+  row.append(
+    $("<div>").attr("id", detailsId).addClass("modal").append(
+      $("<div>").addClass("modal-dialog").append($("<div>").addClass("modal-content").append(
+        $("<div>").addClass("modal-header").append(
+          $("<h4>").addClass("modal-title").text("Team " + team.id),
+          $("<button>").attr("type", "button").attr("data-bs-dismiss", "modal").addClass("btn-close"),
+        ),
+        modalBody,
+        $("<div>").addClass("modal-footer").append(
+          $("<button>").attr("type", "button").attr("data-bs-dismiss", "modal").addClass("btn btn-secondary").text("Close"),
+        ),
+      )),
+    ),
+  );
+  return row;
+};
+
+const renderAnnouncerAlliance = function (alliance, color, isPlayoff) {
+  const card = $("<div>").addClass("row card card-body bg-" + color);
+  if (isPlayoff) {
+    card.append($("<h4>").append($("<b>").text("Alliance " + alliance.playoffAllianceId)));
+  }
+  alliance.teams.forEach(function (team) {
+    card.append(renderAnnouncerTeam(team));
+  });
+  return card;
+};
+
+const renderAnnouncerMatch = function (match) {
+  const isPlayoff = match.type === "playoff";
+  $("#teams").empty().append(
+    renderAnnouncerAlliance(match.red, "red", isPlayoff),
+    renderAnnouncerAlliance(match.blue, "blue", isPlayoff),
+  );
 };
 
 // Handles a websocket message to update the match time countdown.

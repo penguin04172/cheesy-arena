@@ -105,6 +105,7 @@ func (web *Web) registerApiV1Routes(mux *http.ServeMux) {
 	mux.Handle("POST /api/v1/admin/publishing/{resource}", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminPublishingHandler)))
 	mux.Handle("GET /api/v1/admin/match-play/matches", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AdminMatchPlayMatchesHandler)))
 	mux.Handle("GET /api/v1/displays/queueing/matches", web.apiV1Middleware(http.HandlerFunc(web.apiV1QueueingDisplayMatchesHandler)))
+	mux.Handle("GET /api/v1/displays/announcer/match", web.apiV1Middleware(http.HandlerFunc(web.apiV1AnnouncerDisplayMatchHandler)))
 }
 
 func (web *Web) apiV1AdminRead(next http.Handler) http.Handler {
