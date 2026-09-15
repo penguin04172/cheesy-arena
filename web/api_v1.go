@@ -104,6 +104,7 @@ func (web *Web) registerApiV1Routes(mux *http.ServeMux) {
 	mux.Handle("DELETE /api/v1/admin/tournament-data/{type}", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminTournamentDataClearHandler)))
 	mux.Handle("POST /api/v1/admin/publishing/{resource}", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminPublishingHandler)))
 	mux.Handle("GET /api/v1/admin/match-play/matches", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AdminMatchPlayMatchesHandler)))
+	mux.Handle("GET /api/v1/admin/referee/fouls", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AdminRefereeFoulsHandler)))
 	mux.Handle("GET /api/v1/displays/queueing/matches", web.apiV1Middleware(http.HandlerFunc(web.apiV1QueueingDisplayMatchesHandler)))
 	mux.Handle("GET /api/v1/displays/announcer/match", web.apiV1Middleware(http.HandlerFunc(web.apiV1AnnouncerDisplayMatchHandler)))
 	mux.Handle("GET /api/v1/displays/announcer/score", web.apiV1Middleware(http.HandlerFunc(web.apiV1AnnouncerDisplayScoreHandler)))

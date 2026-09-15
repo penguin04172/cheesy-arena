@@ -724,6 +724,19 @@ paths:
               schema: {$ref: "#/components/schemas/MatchPlayMatchesResponse"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
+  /admin/referee/fouls:
+    get:
+      operationId: getAdminRefereeFouls
+      summary: Get the current foul editor rows and rule choices
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Current red and blue foul rows plus the ordered rule catalog
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RefereeFoulsResponse"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
   /displays/queueing/matches:
     get:
       operationId: listQueueingDisplayMatches
@@ -1281,6 +1294,44 @@ components:
       required: [data, meta]
       properties:
         data: {$ref: "#/components/schemas/MatchPlayMatches"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    RefereeFoul:
+      type: object
+      required: [index, foulId, isMajor, teamId, ruleId]
+      properties:
+        index: {type: integer, minimum: 0}
+        foulId: {type: integer, minimum: 0}
+        isMajor: {type: boolean}
+        teamId: {type: integer, minimum: 0}
+        ruleId: {type: integer, minimum: 0}
+    RefereeRule:
+      type: object
+      required: [id, ruleNumber, isMajor, isRankingPoint, description]
+      properties:
+        id: {type: integer, minimum: 1}
+        ruleNumber: {type: string}
+        isMajor: {type: boolean}
+        isRankingPoint: {type: boolean}
+        description: {type: string}
+    RefereeAllianceFouls:
+      type: object
+      required: [teamIds, fouls]
+      properties:
+        teamIds: {type: array, minItems: 3, maxItems: 3, items: {type: integer, minimum: 0}}
+        fouls: {type: array, items: {$ref: "#/components/schemas/RefereeFoul"}}
+    RefereeFouls:
+      type: object
+      required: [matchId, red, blue, rules]
+      properties:
+        matchId: {type: integer, minimum: 0}
+        red: {$ref: "#/components/schemas/RefereeAllianceFouls"}
+        blue: {$ref: "#/components/schemas/RefereeAllianceFouls"}
+        rules: {type: array, items: {$ref: "#/components/schemas/RefereeRule"}}
+    RefereeFoulsResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/RefereeFouls"}
         meta: {$ref: "#/components/schemas/ResponseMeta"}
     QueueingDisplayAlliance:
       type: object

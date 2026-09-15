@@ -43,6 +43,8 @@ func (web *Web) refereePanelHandler(w http.ResponseWriter, r *http.Request) {
 
 // Renders a partial template for when the foul list is updated.
 func (web *Web) refereePanelFoulListHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Deprecation", "true")
+	w.Header().Set("Link", "</api/v1/admin/referee/fouls>; rel=\"successor-version\"")
 	template, err := web.parseFiles("templates/referee_panel_foul_list.html")
 	if err != nil {
 		handleWebErr(w, err)

@@ -155,9 +155,15 @@ const handleRealtimeScore = function (data) {
   if (newRedFoulsHashCode !== redFoulsHashCode || newBlueFoulsHashCode !== blueFoulsHashCode) {
     redFoulsHashCode = newRedFoulsHashCode;
     blueFoulsHashCode = newBlueFoulsHashCode;
-    fetch("/panels/referee/foul_list")
-      .then(response => response.text())
-      .then(svg => $("#foulList").html(svg));
+    fetch("/api/v1/admin/referee/fouls")
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("Unable to load referee fouls: " + response.status);
+        }
+        return response.json();
+      })
+      .then(response => renderRefereeFoulList(response.data))
+      .catch(error => console.error(error));
   }
 
   for (alliance of ["red", "blue"]) {
@@ -177,6 +183,43 @@ const handleRealtimeScore = function (data) {
     setTowerStatus(`#${scoreRoot} .team-3-endgame-tower`, score.EndgameTowerStatuses[2]);
   }
 }
+
+const renderRefereeFoulList = function (data) {
+  const container = $("#foulList").empty();
+  for (const alliance of ["red", "blue"]) {
+    const allianceData = data[alliance];
+    allianceData.fouls.forEach(function (foul) {
+      container.append(renderRefereeFoul(alliance, allianceData.teamIds, foul, data.rules));
+    });
+  }
+};
+
+const renderRefereeFoul = function (alliance, teamIds, foul, rules) {
+  const row = $("<div>").addClass("foul " + alliance + "-foul");
+  const typeButton = $("<div>").addClass("type-button").text((foul.isMajor ? "Major" : "Minor") + " Foul");
+  typeButton.on("click", function () { toggleFoulType(alliance, foul.index); });
+
+  const teamButtons = $("<div>").addClass("team-buttons");
+  teamIds.forEach(function (teamId) {
+    const button = $("<div>").addClass("team-button").text(teamId);
+    if (foul.teamId === teamId) { button.attr("data-selected", "true"); }
+    button.on("click", function () { updateFoulTeam(alliance, foul.index, teamId); });
+    teamButtons.append(button);
+  });
+
+  const ruleSelect = $("<select>").addClass("rule-select");
+  ruleSelect.append($("<option>").attr("value", 0).prop("selected", foul.ruleId === 0).text("No Rule Selected"));
+  rules.filter(rule => rule.isMajor === foul.isMajor).forEach(function (rule) {
+    const foulLabel = (rule.isMajor ? "Major" : "Minor") + " Foul" + (rule.isRankingPoint ? " + RP" : "");
+    ruleSelect.append($("<option>").attr("value", rule.id).prop("selected", foul.ruleId === rule.id)
+      .text(rule.ruleNumber + " [" + foulLabel + "]: " + rule.description));
+  });
+  ruleSelect.on("change", function () { updateFoulRule(alliance, foul.index, parseInt(this.value)); });
+
+  const deleteButton = $("<div>").addClass("delete-button").text("Delete");
+  deleteButton.on("click", function () { deleteFoul(alliance, foul.index); });
+  return row.append($("<div>").text(foul.index + 1), typeButton, teamButtons, ruleSelect, deleteButton);
+};
 
 // Handles a websocket message to update the scoring commit status.
 const handleScoringStatus = function (data) {
