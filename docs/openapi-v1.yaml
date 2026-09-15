@@ -565,7 +565,7 @@ paths:
       - in: path
         name: section
         required: true
-        schema: {type: string, enum: [event, integrations, game]}
+        schema: {type: string, enum: [event, integrations, network, game]}
     get:
       operationId: getAdminSettingsSection
       summary: Get one settings section with secrets represented only as configured flags
@@ -579,6 +579,7 @@ paths:
                 oneOf:
                   - {$ref: "#/components/schemas/EventSettingsResponse"}
                   - {$ref: "#/components/schemas/IntegrationSettingsResponse"}
+                  - {$ref: "#/components/schemas/NetworkSettingsResponse"}
                   - {$ref: "#/components/schemas/GameSettingsResponse"}
         "404": {$ref: "#/components/responses/NotFound"}
     patch:
@@ -594,6 +595,7 @@ paths:
               oneOf:
                 - {$ref: "#/components/schemas/EventSettingsInput"}
                 - {$ref: "#/components/schemas/IntegrationSettingsInput"}
+                - {$ref: "#/components/schemas/NetworkSettingsInput"}
                 - {$ref: "#/components/schemas/GameSettingsInput"}
       responses:
         "200":
@@ -604,6 +606,7 @@ paths:
                 oneOf:
                   - {$ref: "#/components/schemas/EventSettingsResponse"}
                   - {$ref: "#/components/schemas/IntegrationSettingsResponse"}
+                  - {$ref: "#/components/schemas/NetworkSettingsResponse"}
                   - {$ref: "#/components/schemas/GameSettingsResponse"}
         "409": {$ref: "#/components/responses/Conflict"}
         "422": {$ref: "#/components/responses/ValidationError"}
@@ -899,6 +902,46 @@ components:
       required: [data, meta]
       properties:
         data: {$ref: "#/components/schemas/IntegrationSettings"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    NetworkSettings:
+      type: object
+      required: [networkSecurityEnabled, apAddress, apPasswordConfigured, apChannel, switchAddress, switchPasswordConfigured, sccManagementEnabled, redSccAddress, blueSccAddress, sccUsername, sccPasswordConfigured, sccUpCommands, sccDownCommands]
+      properties:
+        networkSecurityEnabled: {type: boolean}
+        apAddress: {type: string}
+        apPasswordConfigured: {type: boolean}
+        apChannel: {type: integer, minimum: 1, maximum: 196}
+        switchAddress: {type: string}
+        switchPasswordConfigured: {type: boolean}
+        sccManagementEnabled: {type: boolean}
+        redSccAddress: {type: string}
+        blueSccAddress: {type: string}
+        sccUsername: {type: string}
+        sccPasswordConfigured: {type: boolean}
+        sccUpCommands: {type: string}
+        sccDownCommands: {type: string}
+    NetworkSettingsInput:
+      type: object
+      additionalProperties: false
+      properties:
+        networkSecurityEnabled: {type: boolean}
+        apAddress: {type: string}
+        apPassword: {$ref: "#/components/schemas/SecretInput"}
+        apChannel: {type: integer, minimum: 1, maximum: 196}
+        switchAddress: {type: string}
+        switchPassword: {$ref: "#/components/schemas/SecretInput"}
+        sccManagementEnabled: {type: boolean}
+        redSccAddress: {type: string}
+        blueSccAddress: {type: string}
+        sccUsername: {type: string}
+        sccPassword: {$ref: "#/components/schemas/SecretInput"}
+        sccUpCommands: {type: string}
+        sccDownCommands: {type: string}
+    NetworkSettingsResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/NetworkSettings"}
         meta: {$ref: "#/components/schemas/ResponseMeta"}
     GameSettings:
       type: object

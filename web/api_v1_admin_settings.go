@@ -79,6 +79,38 @@ type apiV1GameSettingsInput struct {
 	TraversalBonusThreshold    *int `json:"traversalBonusThreshold"`
 }
 
+type apiV1NetworkSettings struct {
+	NetworkSecurityEnabled   bool   `json:"networkSecurityEnabled"`
+	ApAddress                string `json:"apAddress"`
+	ApPasswordConfigured     bool   `json:"apPasswordConfigured"`
+	ApChannel                int    `json:"apChannel"`
+	SwitchAddress            string `json:"switchAddress"`
+	SwitchPasswordConfigured bool   `json:"switchPasswordConfigured"`
+	SccManagementEnabled     bool   `json:"sccManagementEnabled"`
+	RedSccAddress            string `json:"redSccAddress"`
+	BlueSccAddress           string `json:"blueSccAddress"`
+	SccUsername              string `json:"sccUsername"`
+	SccPasswordConfigured    bool   `json:"sccPasswordConfigured"`
+	SccUpCommands            string `json:"sccUpCommands"`
+	SccDownCommands          string `json:"sccDownCommands"`
+}
+
+type apiV1NetworkSettingsInput struct {
+	NetworkSecurityEnabled *bool             `json:"networkSecurityEnabled"`
+	ApAddress              *string           `json:"apAddress"`
+	ApPassword             *apiV1SecretInput `json:"apPassword"`
+	ApChannel              *int              `json:"apChannel"`
+	SwitchAddress          *string           `json:"switchAddress"`
+	SwitchPassword         *apiV1SecretInput `json:"switchPassword"`
+	SccManagementEnabled   *bool             `json:"sccManagementEnabled"`
+	RedSccAddress          *string           `json:"redSccAddress"`
+	BlueSccAddress         *string           `json:"blueSccAddress"`
+	SccUsername            *string           `json:"sccUsername"`
+	SccPassword            *apiV1SecretInput `json:"sccPassword"`
+	SccUpCommands          *string           `json:"sccUpCommands"`
+	SccDownCommands        *string           `json:"sccDownCommands"`
+}
+
 func (web *Web) apiV1AdminSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	web.apiV1State.settingsMu.Lock()
 	defer web.apiV1State.settingsMu.Unlock()
@@ -103,7 +135,9 @@ func (web *Web) apiV1AdminSettingsUpdateHandler(w http.ResponseWriter, r *http.R
 		err = web.applyApiV1IntegrationSettings(w, r, &candidate)
 	case "game":
 		err = web.applyApiV1GameSettings(w, r, &candidate)
-	case "network", "hardware":
+	case "network":
+		err = web.applyApiV1NetworkSettings(w, r, &candidate)
+	case "hardware":
 		writeApiV1Error(w, r, http.StatusNotImplemented, "section_not_implemented", "This settings section is not implemented yet.", nil)
 		return
 	default:
@@ -259,6 +293,61 @@ func (web *Web) applyApiV1GameSettings(w http.ResponseWriter, r *http.Request, s
 	return nil
 }
 
+func (web *Web) applyApiV1NetworkSettings(w http.ResponseWriter, r *http.Request, settings *model.EventSettings) error {
+	var input apiV1NetworkSettingsInput
+	if !decodeApiV1Input(w, r, &input) {
+		return errApiV1ResponseWritten
+	}
+	if input.NetworkSecurityEnabled != nil {
+		settings.NetworkSecurityEnabled = *input.NetworkSecurityEnabled
+	}
+	if input.ApAddress != nil {
+		settings.ApAddress = *input.ApAddress
+	}
+	if input.ApChannel != nil {
+		if *input.ApChannel < 1 || *input.ApChannel > 196 {
+			writeApiV1Error(w, r, http.StatusUnprocessableEntity, "validation_failed", "AP channel is invalid.", map[string]string{"apChannel": "must be between 1 and 196"})
+			return errApiV1ResponseWritten
+		}
+		settings.ApChannel = *input.ApChannel
+	}
+	if input.SwitchAddress != nil {
+		settings.SwitchAddress = *input.SwitchAddress
+	}
+	if input.SccManagementEnabled != nil {
+		settings.SCCManagementEnabled = *input.SccManagementEnabled
+	}
+	if input.RedSccAddress != nil {
+		settings.RedSCCAddress = *input.RedSccAddress
+	}
+	if input.BlueSccAddress != nil {
+		settings.BlueSCCAddress = *input.BlueSccAddress
+	}
+	if input.SccUsername != nil {
+		settings.SCCUsername = *input.SccUsername
+	}
+	if input.SccUpCommands != nil {
+		settings.SCCUpCommands = *input.SccUpCommands
+	}
+	if input.SccDownCommands != nil {
+		settings.SCCDownCommands = *input.SccDownCommands
+	}
+	for _, secret := range []struct {
+		name  string
+		input *apiV1SecretInput
+		value *string
+	}{
+		{"apPassword", input.ApPassword, &settings.ApPassword},
+		{"switchPassword", input.SwitchPassword, &settings.SwitchPassword},
+		{"sccPassword", input.SccPassword, &settings.SCCPassword},
+	} {
+		if secret.input != nil && !applyApiV1Secret(w, r, secret.name, secret.input, secret.value) {
+			return errApiV1ResponseWritten
+		}
+	}
+	return nil
+}
+
 func applyApiV1Secret(w http.ResponseWriter, r *http.Request, name string, input *apiV1SecretInput, value *string) bool {
 	switch input.Action {
 	case "keep":
@@ -304,7 +393,17 @@ func (web *Web) writeApiV1SettingsSection(w http.ResponseWriter, r *http.Request
 			EndgameDurationSec: settings.EndgameDurationSec, EnergizedBonusThreshold: settings.EnergizedBonusThreshold,
 			SuperchargedBonusThreshold: settings.SuperchargedBonusThreshold, TraversalBonusThreshold: settings.TraversalBonusThreshold,
 		}
-	case "network", "hardware":
+	case "network":
+		data = apiV1NetworkSettings{
+			NetworkSecurityEnabled: settings.NetworkSecurityEnabled, ApAddress: settings.ApAddress,
+			ApPasswordConfigured: settings.ApPassword != "", ApChannel: settings.ApChannel,
+			SwitchAddress: settings.SwitchAddress, SwitchPasswordConfigured: settings.SwitchPassword != "",
+			SccManagementEnabled: settings.SCCManagementEnabled, RedSccAddress: settings.RedSCCAddress,
+			BlueSccAddress: settings.BlueSCCAddress, SccUsername: settings.SCCUsername,
+			SccPasswordConfigured: settings.SCCPassword != "", SccUpCommands: settings.SCCUpCommands,
+			SccDownCommands: settings.SCCDownCommands,
+		}
+	case "hardware":
 		writeApiV1Error(w, r, http.StatusNotImplemented, "section_not_implemented", "This settings section is not implemented yet.", nil)
 		return
 	default:
