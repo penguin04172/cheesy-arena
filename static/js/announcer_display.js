@@ -131,17 +131,75 @@ var handleScorePosted = function (data) {
   }
 
   const matchResult = document.getElementById("matchResult");
-  fetch("/displays/announcer/score_posted")
-    .then(response => response.text())
-    .then(html => {
-      matchResult.innerHTML = html;
+  fetch("/api/v1/displays/announcer/score")
+    .then(response => {
+      if (!response.ok) {
+        throw new Error("Unable to load announcer score: " + response.status);
+      }
+      return response.json();
+    })
+    .then(response => {
+      renderAnnouncerScore(matchResult, response.data);
       const modal = new bootstrap.Modal(matchResult);
       modal.show();
 
       // Activate tooltips above the foul listings.
       const tooltipTriggerList = document.querySelectorAll("[data-bs-toggle=tooltip]");
       const tooltipList = [...tooltipTriggerList].map(element => new bootstrap.Tooltip(element));
-    });
+    })
+    .catch(error => console.error(error));
+};
+
+const scoreRow = function (label, value, emphasized) {
+  const left = $("<div>").addClass("col-sm-6").text(label);
+  const right = $("<div>").addClass("col-sm-4").text(value);
+  if (emphasized) { left.wrapInner("<b>"); right.wrapInner("<b>"); }
+  return $("<div>").addClass("row justify-content-center").append(left, right);
+};
+
+const renderScoreAlliance = function (alliance, matchType, color) {
+  const card = $("<div>").addClass("card card-body bg-" + color).append($("<h4>").text("Score"));
+  const summary = alliance.summary;
+  card.append(scoreRow("Auto Fuel Points", summary.autoFuelPoints), scoreRow("Auto Tower Points", summary.autoTowerPoints),
+    scoreRow("Teleop Fuel Points", summary.teleopFuelPoints), scoreRow("Teleop Tower Points", summary.teleopTowerPoints), scoreRow("Foul Points", summary.foulPoints));
+  if (matchType !== "playoff") {
+    card.append(scoreRow("Energized Bonus RP", summary.energizedBonusRankingPoint ? "Yes" : "No"),
+      scoreRow("Supercharged Bonus RP", summary.superchargedBonusRankingPoint ? "Yes" : "No"),
+      scoreRow("Traversal Bonus RP", summary.traversalBonusRankingPoint ? "Yes" : "No"));
+  }
+  card.append(scoreRow("Final Score", summary.score, true));
+  if (matchType !== "playoff") { card.append(scoreRow("Ranking Points", alliance.rankingPoints, true)); }
+  card.append($("<h4>").addClass("mt-3").text("Fouls"));
+  alliance.fouls.forEach(function (foul) {
+    const kind = (foul.isMajor ? "Major" : "Minor") + " Foul" + (foul.isRankingPoint ? " + RP" : "");
+    card.append($("<div>").addClass("row justify-content-center").append(
+      $("<div>").addClass("col-sm-4").text(kind), $("<div>").addClass("col-sm-3").text("Team " + foul.teamId),
+      $("<div>").addClass("col-sm-3").attr("data-bs-toggle", "tooltip").attr("title", foul.ruleDescription).text(foul.ruleNumber)));
+  });
+  card.append($("<h4>").addClass("mt-3").text("Cards"));
+  alliance.cards.forEach(function (item) { card.append(scoreRow("Team " + item.teamId, item.card)); });
+  card.append($("<h4>").addClass("mt-3").text("Rankings"));
+  alliance.rankings.forEach(function (item) {
+    let value = String(item.rank);
+    if (item.rank > item.previousRank && item.previousRank > 0) { value += " ⬇"; }
+    else if (item.rank < item.previousRank) { value += " ⬆"; }
+    if (item.previousRank > 0) { value += " (was " + item.previousRank + ")"; }
+    card.append(scoreRow("Team " + item.teamId, value));
+  });
+  return card;
+};
+
+const renderAnnouncerScore = function (container, score) {
+  const content = $("<div>").addClass("modal-content");
+  content.append($("<div>").attr("id", "savedMatchResult").addClass("modal-header").append(
+    $("<h4>").addClass("modal-title").text("Final Results – " + score.matchName),
+    $("<button>").attr("type", "button").attr("data-bs-dismiss", "modal").addClass("btn-close")));
+  content.append($("<div>").addClass("modal-body row").append(
+    $("<div>").addClass("col-sm-12 mb-3 text-center").append($("<span>").addClass("badge fs-5 " + score.winnerClass).text("Winner: " + score.winner.charAt(0).toUpperCase() + score.winner.slice(1))),
+    $("<div>").addClass("col-sm-6").append(renderScoreAlliance(score.red, score.matchType, "red")),
+    $("<div>").addClass("col-sm-6").append(renderScoreAlliance(score.blue, score.matchType, "blue"))));
+  content.append($("<div>").addClass("modal-footer").append($("<button>").attr("type", "button").attr("data-bs-dismiss", "modal").addClass("btn btn-secondary").text("Close")));
+  $(container).empty().append($("<div>").addClass("modal-dialog modal-xl").append(content));
 };
 
 $(function () {

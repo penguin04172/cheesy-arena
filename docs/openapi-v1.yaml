@@ -744,6 +744,17 @@ paths:
           content:
             application/json:
               schema: {$ref: "#/components/schemas/AnnouncerDisplayMatchResponse"}
+  /displays/announcer/score:
+    get:
+      operationId: getAnnouncerDisplayScore
+      summary: Get the most recently posted score for the announcer display
+      responses:
+        "200":
+          description: Posted score details
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AnnouncerDisplayScoreResponse"}
+        "404": {$ref: "#/components/responses/NotFound"}
 components:
   securitySchemes:
     sessionCookie:
@@ -1338,6 +1349,14 @@ components:
       required: [data, meta]
       properties:
         data: {$ref: "#/components/schemas/AnnouncerDisplayMatch"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    AnnouncerDisplayScoreResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          description: Posted match metadata, winner styling, and red/blue score summaries, fouls, cards, and rankings.
         meta: {$ref: "#/components/schemas/ResponseMeta"}
     GameSettings:
       type: object

@@ -52,6 +52,8 @@ func (web *Web) announcerDisplayMatchLoadHandler(w http.ResponseWriter, r *http.
 
 // Renders a partial template for when a final score is posted.
 func (web *Web) announcerDisplayScorePostedHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Deprecation", "true")
+	w.Header().Set("Link", "</api/v1/displays/announcer/score>; rel=\"successor-version\"")
 	template, err := web.parseFiles("templates/announcer_display_score_posted.html")
 	if err != nil {
 		handleWebErr(w, err)

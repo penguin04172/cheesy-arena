@@ -25,6 +25,7 @@ func TestApiV1OpenApiDocument(t *testing.T) {
 		"/session", "/sponsor-slides", "/teams", "/teams/{teamId}/avatar",
 		"/displays/queueing/matches",
 		"/displays/announcer/match",
+		"/displays/announcer/score",
 	} {
 		if assert.Contains(t, document.Paths, path) {
 			assert.Contains(t, document.Paths[path], "get")
