@@ -432,6 +432,104 @@ paths:
             application/json:
               schema: {$ref: "#/components/schemas/AdminLowerThirdListResponse"}
         "422": {$ref: "#/components/responses/ValidationError"}
+  /admin/teams:
+    get:
+      operationId: listAdminTeams
+      summary: List complete administrative team records with secrets masked
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Teams and team-list state
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AdminTeamListResponse"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+    post:
+      operationId: importAdminTeams
+      summary: Start a bulk team import job
+      security: [{sessionCookie: []}]
+      parameters: [{$ref: "#/components/parameters/CsrfToken"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/AdminTeamImportInput"}
+      responses:
+        "202": {$ref: "#/components/responses/AdminJobItem"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+  /admin/teams/{id}:
+    parameters: [{$ref: "#/components/parameters/ResourceId"}]
+    get:
+      operationId: getAdminTeam
+      summary: Get an administrative team record with its WPA key masked
+      security: [{sessionCookie: []}]
+      responses:
+        "200": {$ref: "#/components/responses/AdminTeamItem"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    patch:
+      operationId: updateAdminTeam
+      summary: Update team metadata with explicit WPA key secret semantics
+      security: [{sessionCookie: []}]
+      parameters: [{$ref: "#/components/parameters/CsrfToken"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/AdminTeamUpdateInput"}
+      responses:
+        "200": {$ref: "#/components/responses/AdminTeamItem"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+    delete:
+      operationId: deleteAdminTeam
+      summary: Delete a team before qualification matches exist
+      security: [{sessionCookie: []}]
+      parameters: [{$ref: "#/components/parameters/CsrfToken"}]
+      responses:
+        "204": {description: Team deleted}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /admin/teams/refresh:
+    post:
+      operationId: refreshAdminTeams
+      summary: Start a job to refresh every team from The Blue Alliance
+      security: [{sessionCookie: []}]
+      parameters: [{$ref: "#/components/parameters/CsrfToken"}]
+      responses:
+        "202": {$ref: "#/components/responses/AdminJobItem"}
+  /admin/teams/wpa-keys:
+    post:
+      operationId: generateAdminTeamWpaKeys
+      summary: Generate missing or replacement WPA keys without returning them
+      security: [{sessionCookie: []}]
+      parameters: [{$ref: "#/components/parameters/CsrfToken"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/AdminTeamWpaKeysInput"}
+      responses:
+        "200":
+          description: Number of teams updated
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AdminTeamWpaKeysResponse"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+  /admin/jobs/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      operationId: getAdminJob
+      summary: Get background job progress and outcome
+      security: [{sessionCookie: []}]
+      responses:
+        "200": {$ref: "#/components/responses/AdminJobItem"}
+        "404": {$ref: "#/components/responses/NotFound"}
 components:
   securitySchemes:
     sessionCookie:
@@ -475,6 +573,21 @@ components:
       content:
         application/json:
           schema: {$ref: "#/components/schemas/ErrorResponse"}
+    Conflict:
+      description: Resource state conflicts with the operation
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/ErrorResponse"}
+    AdminTeamItem:
+      description: Administrative team record
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/AdminTeamResponse"}
+    AdminJobItem:
+      description: Background job
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/AdminJobResponse"}
     AdminAwardList:
       description: Awards
       content:
@@ -497,6 +610,117 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
   schemas:
+    AdminTeam:
+      type: object
+      required: [id, name, nickname, city, stateProv, country, schoolName, rookieYear, robotName, accomplishments, wpaKeyConfigured, yellowCard, hasConnected, ftaNotes]
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        nickname: {type: string}
+        city: {type: string}
+        stateProv: {type: string}
+        country: {type: string}
+        schoolName: {type: string}
+        rookieYear: {type: integer, minimum: 0}
+        robotName: {type: string}
+        accomplishments: {type: string}
+        wpaKeyConfigured:
+          type: boolean
+          description: Whether a WPA key is stored; the key itself is never returned.
+        yellowCard: {type: boolean}
+        hasConnected: {type: boolean}
+        ftaNotes: {type: string}
+    AdminTeamResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/AdminTeam"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    AdminTeamListData:
+      type: object
+      required: [teams, canModifyTeamList, networkSecurityEnabled]
+      properties:
+        teams: {type: array, items: {$ref: "#/components/schemas/AdminTeam"}}
+        canModifyTeamList: {type: boolean}
+        networkSecurityEnabled: {type: boolean}
+    AdminTeamListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/AdminTeamListData"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    AdminTeamImportInput:
+      type: object
+      additionalProperties: false
+      required: [teamIds, downloadOfficialData]
+      properties:
+        teamIds:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          uniqueItems: true
+          items: {type: integer, minimum: 1}
+        downloadOfficialData: {type: boolean}
+    SecretInput:
+      type: object
+      additionalProperties: false
+      required: [action, value]
+      properties:
+        action: {type: string, enum: [keep, replace, clear]}
+        value:
+          type: string
+          description: Required only when action is replace; ignored otherwise.
+    AdminTeamUpdateInput:
+      type: object
+      additionalProperties: false
+      required: [name, nickname, city, stateProv, country, schoolName, rookieYear, robotName, accomplishments, hasConnected, ftaNotes]
+      properties:
+        name: {type: string}
+        nickname: {type: string}
+        city: {type: string}
+        stateProv: {type: string}
+        country: {type: string}
+        schoolName: {type: string}
+        rookieYear: {type: integer, minimum: 0}
+        robotName: {type: string}
+        accomplishments: {type: string}
+        wpaKey: {$ref: "#/components/schemas/SecretInput"}
+        hasConnected: {type: boolean}
+        ftaNotes: {type: string}
+    AdminTeamWpaKeysInput:
+      type: object
+      additionalProperties: false
+      required: [replaceAll]
+      properties:
+        replaceAll: {type: boolean}
+    AdminTeamWpaKeysResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [updated]
+          properties:
+            updated: {type: integer, minimum: 0}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    AdminJob:
+      type: object
+      required: [id, type, status, progress, error, createdAt, startedAt, completedAt]
+      properties:
+        id: {type: string, format: uuid}
+        type: {type: string, enum: [team_import, team_refresh]}
+        status: {type: string, enum: [queued, running, succeeded, failed]}
+        progress: {type: integer, minimum: 0, maximum: 100}
+        error: {type: [string, "null"]}
+        createdAt: {type: string, format: date-time}
+        startedAt: {type: [string, "null"], format: date-time}
+        completedAt: {type: [string, "null"], format: date-time}
+    AdminJobResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/AdminJob"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
     AdminAwardInput:
       type: object
       additionalProperties: false

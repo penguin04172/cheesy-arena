@@ -86,6 +86,14 @@ func (web *Web) registerApiV1Routes(mux *http.ServeMux) {
 	mux.Handle("PATCH /api/v1/admin/sponsor-slides/{id}", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminSponsorSlideUpdateHandler)))
 	mux.Handle("DELETE /api/v1/admin/sponsor-slides/{id}", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminSponsorSlideDeleteHandler)))
 	mux.Handle("POST /api/v1/admin/sponsor-slides/reorder", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminSponsorSlideReorderHandler)))
+	mux.Handle("GET /api/v1/admin/teams", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AdminTeamsHandler)))
+	mux.Handle("POST /api/v1/admin/teams", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminTeamImportHandler)))
+	mux.Handle("GET /api/v1/admin/teams/{id}", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AdminTeamHandler)))
+	mux.Handle("PATCH /api/v1/admin/teams/{id}", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminTeamUpdateHandler)))
+	mux.Handle("DELETE /api/v1/admin/teams/{id}", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminTeamDeleteHandler)))
+	mux.Handle("POST /api/v1/admin/teams/refresh", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminTeamRefreshHandler)))
+	mux.Handle("POST /api/v1/admin/teams/wpa-keys", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AdminTeamWpaKeysHandler)))
+	mux.Handle("GET /api/v1/admin/jobs/{id}", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AdminJobHandler)))
 }
 
 func (web *Web) apiV1AdminRead(next http.Handler) http.Handler {

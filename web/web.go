@@ -27,10 +27,11 @@ const (
 type Web struct {
 	arena           *field.Arena
 	templateHelpers template.FuncMap
+	apiV1State      *apiV1State
 }
 
 func NewWeb(arena *field.Arena) *Web {
-	web := &Web{arena: arena}
+	web := &Web{arena: arena, apiV1State: newApiV1State()}
 
 	// Helper functions that can be used inside templates.
 	web.templateHelpers = template.FuncMap{
