@@ -57,8 +57,18 @@ func (writer *apiV1ResponseWriter) Write(bytes []byte) (int, error) {
 }
 
 func (web *Web) registerApiV1Routes(mux *http.ServeMux) {
+	mux.Handle("GET /api/v1/alliances", web.apiV1Middleware(http.HandlerFunc(web.apiV1AlliancesHandler)))
+	mux.Handle("GET /api/v1/bracket", web.apiV1Middleware(http.HandlerFunc(web.apiV1BracketHandler)))
 	mux.Handle("GET /api/v1/event", web.apiV1Middleware(http.HandlerFunc(web.apiV1EventHandler)))
+	mux.Handle("GET /api/v1/game/rules", web.apiV1Middleware(http.HandlerFunc(web.apiV1RulesHandler)))
+	mux.Handle("GET /api/v1/match-logs", web.apiV1Middleware(http.HandlerFunc(web.apiV1MatchLogsHandler)))
+	mux.Handle("GET /api/v1/matches/{matchId}/stations/{stationId}/logs", web.apiV1Middleware(http.HandlerFunc(web.apiV1MatchLogHandler)))
+	mux.Handle("GET /api/v1/matches/{type}", web.apiV1Middleware(http.HandlerFunc(web.apiV1MatchesHandler)))
+	mux.Handle("GET /api/v1/rankings", web.apiV1Middleware(http.HandlerFunc(web.apiV1RankingsHandler)))
 	mux.Handle("GET /api/v1/session", web.apiV1Middleware(http.HandlerFunc(web.apiV1SessionHandler)))
+	mux.Handle("GET /api/v1/sponsor-slides", web.apiV1Middleware(http.HandlerFunc(web.apiV1SponsorSlidesHandler)))
+	mux.Handle("GET /api/v1/teams", web.apiV1Middleware(http.HandlerFunc(web.apiV1TeamsHandler)))
+	mux.Handle("GET /api/v1/teams/{teamId}/avatar", web.apiV1Middleware(http.HandlerFunc(web.apiV1TeamAvatarHandler)))
 }
 
 func (web *Web) apiV1Middleware(next http.Handler) http.Handler {

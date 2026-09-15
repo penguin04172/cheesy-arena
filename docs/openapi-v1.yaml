@@ -8,6 +8,34 @@ info:
 servers:
   - url: /api/v1
 paths:
+  /alliances:
+    get:
+      operationId: listAlliances
+      summary: List playoff alliances
+      responses:
+        "200":
+          description: Alliances ordered by ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AllianceListResponse"
+  /bracket:
+    get:
+      operationId: getBracket
+      summary: Get the playoff bracket as structured data
+      parameters:
+        - in: query
+          name: activeMatch
+          schema:
+            type: string
+            enum: [current, saved]
+      responses:
+        "200":
+          description: Playoff bracket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BracketResponse"
   /event:
     get:
       operationId: getPublicEvent
@@ -32,6 +60,157 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SessionResponse"
+  /game/rules:
+    get:
+      operationId: listGameRules
+      summary: List foul rules ordered by ID
+      responses:
+        "200":
+          description: Game rules
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RuleListResponse"
+  /match-logs:
+    get:
+      operationId: listMatchLogs
+      summary: List matches available to the match log interface
+      responses:
+        "200":
+          description: Matches grouped by type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchLogListResponse"
+  /matches/{type}:
+    get:
+      operationId: listMatches
+      summary: List matches and their latest results
+      parameters:
+        - in: path
+          name: type
+          required: true
+          schema:
+            $ref: "#/components/schemas/MatchType"
+      responses:
+        "200":
+          description: Matches ordered by type order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchListResponse"
+        "400":
+          description: Invalid match type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /matches/{matchId}/stations/{stationId}/logs:
+    get:
+      operationId: getMatchStationLogs
+      summary: Get bounded and optionally sampled driver station log rows
+      parameters:
+        - in: path
+          name: matchId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: stationId
+          required: true
+          schema:
+            type: string
+            enum: [R1, R2, R3, B1, B2, B3]
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10000
+            default: 1000
+        - in: query
+          name: sampleEvery
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 1
+      responses:
+        "200":
+          description: Match log details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchLogDetailResponse"
+        "400":
+          description: Invalid query parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Match or station log not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /rankings:
+    get:
+      operationId: listRankings
+      summary: List qualification rankings
+      responses:
+        "200":
+          description: Rankings and highest played match
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RankingsResponse"
+  /sponsor-slides:
+    get:
+      operationId: listSponsorSlides
+      summary: List public sponsor slides
+      responses:
+        "200":
+          description: Sponsor slides in display order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SponsorSlideListResponse"
+  /teams:
+    get:
+      operationId: listPublicTeams
+      summary: List teams without private network or FTA fields
+      responses:
+        "200":
+          description: Public teams ordered by team number
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamListResponse"
+  /teams/{teamId}/avatar:
+    get:
+      operationId: getTeamAvatar
+      summary: Get a team avatar or the default avatar
+      parameters:
+        - in: path
+          name: teamId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Avatar image
+          content:
+            image/png:
+              schema:
+                type: string
+                contentEncoding: binary
 components:
   responses:
     InternalError:
@@ -41,6 +220,12 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
   schemas:
+    MatchType:
+      type: string
+      enum: [test, practice, qualification, playoff]
+    MatchStatus:
+      type: string
+      enum: [scheduled, hidden, red_won, blue_won, tie]
     ResponseMeta:
       type: object
       required:
@@ -166,3 +351,213 @@ components:
           $ref: "#/components/schemas/Session"
         meta:
           $ref: "#/components/schemas/ResponseMeta"
+    MatchTeam:
+      type: object
+      required: [teamId, isSurrogate]
+      properties:
+        teamId:
+          type: integer
+        isSurrogate:
+          type: boolean
+    Match:
+      type: object
+      required: [id, type, typeOrder, time, longName, shortName, nameDetail, playoffMatchGroupId, playoffRedAlliance, playoffBlueAlliance, red, blue, startedAt, scoreCommittedAt, fieldReadyAt, status, useTiebreakCriteria, tbaMatchKey]
+      properties:
+        id: {type: integer}
+        type: {$ref: "#/components/schemas/MatchType"}
+        typeOrder: {type: integer}
+        time: {type: string, format: date-time}
+        longName: {type: string}
+        shortName: {type: string}
+        nameDetail: {type: string}
+        playoffMatchGroupId: {type: string}
+        playoffRedAlliance: {type: integer}
+        playoffBlueAlliance: {type: integer}
+        red:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items: {$ref: "#/components/schemas/MatchTeam"}
+        blue:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items: {$ref: "#/components/schemas/MatchTeam"}
+        startedAt: {type: [string, "null"], format: date-time}
+        scoreCommittedAt: {type: [string, "null"], format: date-time}
+        fieldReadyAt: {type: [string, "null"], format: date-time}
+        status: {$ref: "#/components/schemas/MatchStatus"}
+        useTiebreakCriteria: {type: boolean}
+        tbaMatchKey:
+          type: object
+          required: [compLevel, setNumber, matchNumber]
+          properties:
+            compLevel: {type: string}
+            setNumber: {type: integer}
+            matchNumber: {type: integer}
+    ScoreSummary:
+      type: object
+      additionalProperties: false
+      required: [score, matchPoints, postMatchPoints, foulPoints, bonusRankingPoints, playoffDq]
+      properties:
+        autoFuelPoints: {type: integer}
+        autoTowerPoints: {type: integer}
+        teleopFuelPoints: {type: integer}
+        teleopTowerPoints: {type: integer}
+        numFuel: {type: integer}
+        numFuelPostMatch: {type: integer}
+        numFuelGoal: {type: integer}
+        matchPoints: {type: integer}
+        postMatchPoints: {type: integer}
+        foulPoints: {type: integer}
+        score: {type: integer}
+        playoffDq: {type: boolean}
+        energizedBonusRankingPoint: {type: boolean}
+        superchargedBonusRankingPoint: {type: boolean}
+        traversalBonusRankingPoint: {type: boolean}
+        bonusRankingPoints: {type: integer}
+        numOpponentMajorFouls: {type: integer}
+    MatchResult:
+      type: object
+      required: [id, playNumber, redSummary, blueSummary, redCards, blueCards]
+      properties:
+        id: {type: integer}
+        playNumber: {type: integer}
+        redSummary: {$ref: "#/components/schemas/ScoreSummary"}
+        blueSummary: {$ref: "#/components/schemas/ScoreSummary"}
+        redCards: {type: object, additionalProperties: {type: string}}
+        blueCards: {type: object, additionalProperties: {type: string}}
+    MatchWithResult:
+      type: object
+      required: [match, result]
+      properties:
+        match: {$ref: "#/components/schemas/Match"}
+        result:
+          oneOf:
+            - {$ref: "#/components/schemas/MatchResult"}
+            - {type: "null"}
+    MatchListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {type: array, items: {$ref: "#/components/schemas/MatchWithResult"}}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    Alliance:
+      type: object
+      required: [id, teamIds, lineup]
+      properties:
+        id: {type: integer}
+        teamIds: {type: array, items: {type: integer}}
+        lineup: {type: array, minItems: 3, maxItems: 3, items: {type: integer}}
+    AllianceListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {type: array, items: {$ref: "#/components/schemas/Alliance"}}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    Ranking:
+      type: object
+      required: [teamId, nickname, rank, previousRank, rankingPoints, matchPoints, autoFuelPoints, towerPoints, wins, losses, ties, disqualifications, played]
+      properties:
+        teamId: {type: integer}
+        nickname: {type: string}
+        rank: {type: integer}
+        previousRank: {type: integer}
+        rankingPoints: {type: integer}
+        matchPoints: {type: integer}
+        autoFuelPoints: {type: integer}
+        towerPoints: {type: integer}
+        wins: {type: integer}
+        losses: {type: integer}
+        ties: {type: integer}
+        disqualifications: {type: integer}
+        played: {type: integer}
+    RankingsResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [rankings, highestPlayedMatch]
+          properties:
+            rankings: {type: array, items: {$ref: "#/components/schemas/Ranking"}}
+            highestPlayedMatch: {type: string}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    SponsorSlide:
+      type: object
+      required: [id, subtitle, line1, line2, image, displayTimeSec, displayOrder]
+      properties:
+        id: {type: integer}
+        subtitle: {type: string}
+        line1: {type: string}
+        line2: {type: string}
+        image: {type: string}
+        displayTimeSec: {type: integer}
+        displayOrder: {type: integer}
+    SponsorSlideListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {type: array, items: {$ref: "#/components/schemas/SponsorSlide"}}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    PublicTeam:
+      type: object
+      required: [id, name, nickname, city, stateProv, country, schoolName, rookieYear, robotName, accomplishments, yellowCard, hasConnected]
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        nickname: {type: string}
+        city: {type: string}
+        stateProv: {type: string}
+        country: {type: string}
+        schoolName: {type: string}
+        rookieYear: {type: integer}
+        robotName: {type: string}
+        accomplishments: {type: string}
+        yellowCard: {type: boolean}
+        hasConnected: {type: boolean}
+    TeamListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {type: array, items: {$ref: "#/components/schemas/PublicTeam"}}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    Rule:
+      type: object
+      required: [id, ruleNumber, isMajor, isRankingPoint, description]
+      properties:
+        id: {type: integer}
+        ruleNumber: {type: string}
+        isMajor: {type: boolean}
+        isRankingPoint: {type: boolean}
+        description: {type: string}
+    RuleListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {type: array, items: {$ref: "#/components/schemas/Rule"}}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    BracketResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [bracketType, activeMatchId, matchups]
+          properties:
+            bracketType: {type: string, enum: [double, double4, "16", "8", "4", "2"]}
+            activeMatchId: {type: [integer, "null"]}
+            matchups: {type: array, items: {type: object}}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    MatchLogListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {type: object}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    MatchLogDetailResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {type: object}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
