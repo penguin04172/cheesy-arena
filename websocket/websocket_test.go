@@ -4,8 +4,10 @@
 package websocket
 
 import (
+	"encoding/json"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -105,6 +107,54 @@ func TestWebsocket(t *testing.T) {
 	time.Sleep(time.Millisecond)
 	notifier1.Notify()
 	assert.Equal(t, 0, len(notifier1.listeners))
+}
+
+func TestHandleNotifiersV1BootstrapReadyAndSequence(t *testing.T) {
+	notifier := NewNotifier("state", func() any { return "initial" })
+	notifier.NotifyWithMessage("before-listener")
+	events := NewNotifier("event", nil)
+
+	handler := http.NewServeMux()
+	handler.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		ws, err := NewWebsocket(w, r)
+		assert.NoError(t, err)
+		defer ws.Close()
+		ws.HandleNotifiersV1(notifier, events)
+	})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+	conn, _, err := websocket.DefaultDialer.Dial("ws"+server.URL[len("http"):], nil)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	var bootstrap V1Message
+	require.NoError(t, conn.ReadJSON(&bootstrap))
+	assert.Equal(t, "state", bootstrap.Type)
+	assert.Equal(t, "initial", bootstrap.Data)
+	assert.Equal(t, uint64(1), bootstrap.Meta.Sequence)
+	assert.True(t, bootstrap.Meta.Bootstrap)
+	assert.Equal(t, V1ProtocolVersion, bootstrap.Meta.Version)
+	_, err = time.Parse(time.RFC3339Nano, bootstrap.Meta.SentAt)
+	assert.NoError(t, err)
+
+	var ready struct {
+		Type string        `json:"type"`
+		Data V1ReadyData   `json:"data"`
+		Meta V1MessageMeta `json:"meta"`
+	}
+	require.NoError(t, conn.ReadJSON(&ready))
+	assert.Equal(t, "ready", ready.Type)
+	assert.Equal(t, map[string]uint64{"state": 1, "event": 0}, ready.Data.Sequences)
+	assert.True(t, ready.Meta.Bootstrap)
+
+	notifier.NotifyWithMessage(map[string]int{"value": 2})
+	_, bytes, err := conn.ReadMessage()
+	require.NoError(t, err)
+	var update V1Message
+	require.NoError(t, json.Unmarshal(bytes, &update))
+	assert.Equal(t, "state", update.Type)
+	assert.Equal(t, uint64(2), update.Meta.Sequence)
+	assert.False(t, update.Meta.Bootstrap)
 }
 
 func assertMessage(t *testing.T, ws *Websocket, expectedMessageType string, expectedMessageBody any) {

@@ -31,6 +31,25 @@ type Message struct {
 	Data any    `json:"data"`
 }
 
+const V1ProtocolVersion = 1
+
+type V1MessageMeta struct {
+	Version   int    `json:"version"`
+	Sequence  uint64 `json:"sequence"`
+	Bootstrap bool   `json:"bootstrap"`
+	SentAt    string `json:"sentAt"`
+}
+
+type V1Message struct {
+	Type string        `json:"type"`
+	Data any           `json:"data"`
+	Meta V1MessageMeta `json:"meta"`
+}
+
+type V1ReadyData struct {
+	Sequences map[string]uint64 `json:"sequences"`
+}
+
 var websocketUpgrader = websocket.Upgrader{ReadBufferSize: 1024, WriteBufferSize: 2014}
 
 // Upgrades the given HTTP request to a websocket connection.
@@ -110,13 +129,68 @@ func (ws *Websocket) WriteError(errorMessage string) error {
 	return ws.Write("error", errorMessage)
 }
 
+func (ws *Websocket) writeV1(messageType string, data any, sequence uint64, bootstrap bool) error {
+	ws.writeMutex.Lock()
+	defer ws.writeMutex.Unlock()
+	return ws.conn.WriteJSON(V1Message{
+		Type: messageType,
+		Data: data,
+		Meta: V1MessageMeta{Version: V1ProtocolVersion, Sequence: sequence, Bootstrap: bootstrap, SentAt: time.Now().UTC().Format(time.RFC3339Nano)},
+	})
+}
+
+// HandleNotifiersV1 sends typed bootstrap snapshots followed by sequenced events. Sequences are scoped to each event
+// type, allowing clients with different subscription sets to detect actual missed notifications without false gaps.
+func (ws *Websocket) HandleNotifiersV1(notifiers ...*Notifier) {
+	listeners := make([]reflect.SelectCase, len(notifiers))
+	sequences := make(map[string]uint64, len(notifiers))
+	for i, notifier := range notifiers {
+		listener, snapshot, sequence, hasSnapshot := notifier.listenWithSnapshot()
+		defer notifier.stopListening(listener)
+		listeners[i] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(listener)}
+		sequences[notifier.messageType] = sequence
+		if hasSnapshot {
+			if err := ws.writeV1(notifier.messageType, snapshot, sequence, true); err != nil {
+				return
+			}
+		}
+	}
+	if err := ws.writeV1("ready", V1ReadyData{Sequences: sequences}, 0, true); err != nil {
+		return
+	}
+
+	ticker := time.NewTicker(pingInterval)
+	defer ticker.Stop()
+	pingIndex := len(listeners)
+	listeners = append(listeners, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ticker.C)})
+	for {
+		chosenIndex, value, ok := reflect.Select(listeners)
+		if ok && chosenIndex == pingIndex {
+			if err := ws.writeV1("ping", nil, 0, false); err != nil {
+				return
+			}
+			continue
+		}
+		if !ok {
+			return
+		}
+		message, ok := value.Interface().(messageEnvelope)
+		if !ok {
+			continue
+		}
+		if err := ws.writeV1(message.messageType, message.messageBody, message.sequence, false); err != nil {
+			return
+		}
+	}
+}
+
 // Creates listeners for the given notifiers and loops forever to pass their output directly through to the websocket.
 func (ws *Websocket) HandleNotifiers(notifiers ...*Notifier) {
 	// Use reflection to dynamically build a select/case structure for all the notifiers.
 	listeners := make([]reflect.SelectCase, len(notifiers))
 	for i, notifier := range notifiers {
 		listener := notifier.listen()
-		defer close(listener)
+		defer notifier.stopListening(listener)
 		listeners[i] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(listener)}
 
 		// Send each notifier's respective data immediately upon connection to bootstrap the client state.

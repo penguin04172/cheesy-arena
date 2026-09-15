@@ -68,3 +68,52 @@ var CheesyWebsocket = function (path, events) {
 
   this.connect();
 };
+
+// V1 stream client with per-event sequence tracking. Call onGap when a reconnect or dropped notification requires a
+// fresh REST bootstrap; existing pages continue using CheesyWebsocket until their v1 stream migration is complete.
+var CheesyWebsocketV1 = function (path, events, onGap) {
+  var that = this;
+  this.sequences = {};
+  this.ready = false;
+  this.hasConnected = false;
+
+  this.connect = function () {
+    var protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
+    var socket = new WebSocket(protocol + window.location.host + path + window.location.search);
+    that.websocket = socket;
+    socket.onopen = function () {
+      console.log("Websocket v1 connected to " + path + ".");
+      if (that.hasConnected && onGap) { onGap("reconnect", null, null); }
+      that.hasConnected = true;
+    };
+    socket.onclose = function () {
+      that.ready = false;
+      console.log("Websocket v1 lost connection. Reconnecting in 3 seconds...");
+      setTimeout(that.connect, 3000);
+    };
+    socket.onmessage = function (event) {
+      var message = JSON.parse(event.data);
+      if (!message.meta || message.meta.version !== 1) { return; }
+      if (message.type === "ready") {
+        that.sequences = message.data.sequences || {};
+        that.ready = true;
+        if (events.ready) { events.ready(message); }
+        return;
+      }
+      if (message.type === "ping") { return; }
+      var previous = that.sequences[message.type];
+      if (!message.meta.bootstrap && previous !== undefined && message.meta.sequence !== previous + 1) {
+        that.ready = false;
+        if (onGap) { onGap(message.type, previous, message.meta.sequence); }
+      }
+      that.sequences[message.type] = message.meta.sequence;
+      if (events[message.type]) { events[message.type](message); }
+    };
+  };
+
+  this.send = function (type, data) {
+    this.websocket.send(JSON.stringify({type: type, data: data}));
+  };
+
+  this.connect();
+};

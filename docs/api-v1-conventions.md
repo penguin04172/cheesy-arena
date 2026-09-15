@@ -80,6 +80,10 @@ Errors use a stable machine-readable code.
 ## Websocket recovery
 
 - REST bootstrap endpoints are the source of truth for recovery.
-- Version 1 websocket events include a per-stream sequence and snapshot version.
+- Version 1 websocket messages use `{type, data, meta}`; meta contains protocol `version`, event-type `sequence`,
+  `bootstrap`, and RFC 3339 `sentAt`.
+- Sequences are scoped to event type, since pages subscribe to different notifier sets. A `ready` envelope concludes the
+  initial snapshots and contains the current sequence for every subscribed type.
 - A client that reconnects or detects a sequence gap reloads its bootstrap endpoint.
-- Slow consumers are disconnected instead of silently losing state.
+- V1 slow consumers are disconnected instead of silently losing state. Legacy listeners retain their existing drop
+  behavior until their page is migrated.
