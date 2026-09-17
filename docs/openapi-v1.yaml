@@ -755,6 +755,23 @@ paths:
         "200": {description: Match, arena readiness, score, display mode, and scoring commit snapshot}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
+  /admin/scoring/{position}/bootstrap:
+    get:
+      operationId: getScoringPanelBootstrap
+      summary: Get a scoring panel read-model and stream URL
+      security: [{sessionCookie: []}]
+      parameters:
+        - {in: path, name: position, required: true, schema: {type: string, enum: [red, blue]}}
+      responses:
+        "200": {description: Current match, clock, and editable scoring state}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /admin/referee/bootstrap:
+    get:
+      operationId: getRefereePanelBootstrap
+      summary: Get the referee panel read-model and stream URL
+      security: [{sessionCookie: []}]
+      responses:
+        "200": {description: Current match, clock, fouls/cards, station bypass, and scoring readiness}
   /displays/queueing/matches:
     get:
       operationId: listQueueingDisplayMatches
@@ -912,6 +929,24 @@ paths:
     get:
       operationId: streamMatchPlayControl
       summary: Upgrade to the sequenced match play control read-model stream
+      security: [{sessionCookie: []}]
+      x-websocket: true
+      responses:
+        "101": {description: WebSocket protocol switched; messages use the v1 stream envelope.}
+  /streams/admin/scoring/{position}:
+    get:
+      operationId: streamScoringPanel
+      summary: Upgrade to a sequenced scoring panel read-model stream
+      security: [{sessionCookie: []}]
+      x-websocket: true
+      parameters:
+        - {in: path, name: position, required: true, schema: {type: string, enum: [red, blue]}}
+      responses:
+        "101": {description: WebSocket protocol switched; messages use the v1 stream envelope.}
+  /streams/admin/referee:
+    get:
+      operationId: streamRefereePanel
+      summary: Upgrade to the sequenced referee panel read-model stream
       security: [{sessionCookie: []}]
       x-websocket: true
       responses:

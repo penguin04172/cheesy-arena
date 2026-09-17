@@ -4,10 +4,21 @@
 // Client-side logic for the referee interface.
 
 var websocket;
+var stateWebsocket;
+let bootstrapRequestId = 0;
 let redFoulsHashCode = 0;
 let blueFoulsHashCode = 0;
 let scoreIsReady = false;
 let isPostMatch = false;
+const legacyMatchStateIds = {pre_match: 0, start_match: 1, auto: 2, pause: 3, teleop: 4, post_match: 5, timeout_active: 6, post_timeout: 7};
+const legacyRefereeMatch = function (data) { const teams = {}; Object.keys(data.teams || {}).forEach(key => { const team = data.teams[key]; teams[key] = team ? {Id: team.id, YellowCard: team.yellowCard} : null; }); return {Match: {LongName: data.longName}, Teams: teams}; };
+const legacyControlScore = data => ({
+  Red: {Score: {AutoTowerStatuses: data.red.autoTowerStatuses, EndgameTowerStatuses: data.red.endgameTowerStatuses, Fouls: data.red.fouls.map(foul => ({FoulId: foul.foulId, IsMajor: foul.isMajor, TeamId: foul.teamId, RuleId: foul.ruleId}))}},
+  Blue: {Score: {AutoTowerStatuses: data.blue.autoTowerStatuses, EndgameTowerStatuses: data.blue.endgameTowerStatuses, Fouls: data.blue.fouls.map(foul => ({FoulId: foul.foulId, IsMajor: foul.isMajor, TeamId: foul.teamId, RuleId: foul.ruleId}))}},
+  RedCards: data.red.cards, BlueCards: data.blue.cards});
+const legacyScoringStatus = data => ({RefereeScoreReady: data.refereeScoreReady, PositionStatuses: Object.fromEntries(Object.entries(data.positions || {}).map(([key, value]) => [key, {Ready: value.ready, NumPanels: value.numPanels, NumPanelsReady: value.numPanelsReady}]))});
+const legacyStationStatuses = data => ({AllianceStations: Object.fromEntries(Object.entries(data || {}).map(([key, value]) => [key, {Bypass: value.bypass}]))});
+const handleV1MatchClock = data => handleMatchTime({MatchState: legacyMatchStateIds[data.state], MatchTimeSec: data.elapsedSec});
 
 // Sends the foul to the server to add it to the list.
 const addFoul = function (alliance, isMajor) {
@@ -277,6 +288,19 @@ const setTeamCard = function (alliance, position, team) {
   cardButton.attr("data-card", "");
 }
 
+const applyRefereeBootstrap = function (data) {
+  handleMatchLoad(legacyRefereeMatch(data.match)); handleV1MatchClock(data.matchClock);
+  handleRealtimeScore(legacyControlScore(data.realtimeScore)); handleScoringStatus(legacyScoringStatus(data.scoringStatus));
+  handleArenaStatus(legacyStationStatuses(data.stations));
+};
+const loadRefereeBootstrap = function () {
+  const requestId = ++bootstrapRequestId; const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 5000);
+  return fetch("/api/v1/admin/referee/bootstrap", {signal: controller.signal})
+    .then(response => { if (!response.ok) { throw new Error("Unable to load referee bootstrap: " + response.status); } return response.json(); })
+    .then(response => { if (requestId === bootstrapRequestId) { applyRefereeBootstrap(response.data); } })
+    .catch(error => console.error(error)).finally(() => clearTimeout(timeout));
+};
+
 // Produces a hash code of the given object for use in equality comparisons.
 const hashObject = function (object) {
   const s = JSON.stringify(object);
@@ -292,22 +316,24 @@ $(function () {
   var urlParams = new URLSearchParams(window.location.search);
   $(".headRef-dependent").attr("data-hr", urlParams.get("hr"));
 
-  // Set up the websocket back to the server.
-  websocket = new CheesyWebsocket("/panels/referee/websocket", {
-    matchLoad: function (event) {
-      handleMatchLoad(event.data);
+  websocket = new CheesyWebsocket("/panels/referee/websocket", {});
+  loadRefereeBootstrap().finally(function () {
+    stateWebsocket = new CheesyWebsocketV1("/api/v1/streams/admin/referee", {
+    match: function (event) {
+      handleMatchLoad(legacyRefereeMatch(event.data));
     },
-    matchTime: function (event) {
-      handleMatchTime(event.data);
+    matchClock: function (event) {
+      handleV1MatchClock(event.data);
     },
     realtimeScore: function (event) {
-      handleRealtimeScore(event.data);
+      handleRealtimeScore(legacyControlScore(event.data));
     },
     scoringStatus: function (event) {
-      handleScoringStatus(event.data);
+      handleScoringStatus(legacyScoringStatus(event.data));
     },
-    arenaStatus: function (event) {
-      handleArenaStatus(event.data);
+    stationStatuses: function (event) {
+      handleArenaStatus(legacyStationStatuses(event.data));
     },
+    }, loadRefereeBootstrap);
   });
 });

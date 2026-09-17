@@ -107,6 +107,8 @@ func (web *Web) registerApiV1Routes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/admin/referee/fouls", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AdminRefereeFoulsHandler)))
 	mux.Handle("GET /api/v1/admin/alliance-selection/bootstrap", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AllianceSelectionControlBootstrapHandler)))
 	mux.Handle("GET /api/v1/admin/match-play/bootstrap", web.apiV1AdminRead(http.HandlerFunc(web.apiV1MatchPlayBootstrapHandler)))
+	mux.Handle("GET /api/v1/admin/scoring/{position}/bootstrap", web.apiV1AdminRead(http.HandlerFunc(web.apiV1ScoringPanelBootstrapHandler)))
+	mux.Handle("GET /api/v1/admin/referee/bootstrap", web.apiV1AdminRead(http.HandlerFunc(web.apiV1RefereePanelBootstrapHandler)))
 	mux.Handle("GET /api/v1/displays/queueing/matches", web.apiV1Middleware(http.HandlerFunc(web.apiV1QueueingDisplayMatchesHandler)))
 	mux.Handle("GET /api/v1/displays/announcer/match", web.apiV1Middleware(http.HandlerFunc(web.apiV1AnnouncerDisplayMatchHandler)))
 	mux.Handle("GET /api/v1/displays/announcer/score", web.apiV1Middleware(http.HandlerFunc(web.apiV1AnnouncerDisplayScoreHandler)))
@@ -126,6 +128,8 @@ func (web *Web) registerApiV1Routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/streams/displays/field-monitor", web.apiV1FieldMonitorStreamHandler)
 	mux.HandleFunc("GET /api/v1/streams/admin/alliance-selection", web.apiV1AllianceSelectionControlStreamHandler)
 	mux.HandleFunc("GET /api/v1/streams/admin/match-play", web.apiV1MatchPlayStreamHandler)
+	mux.HandleFunc("GET /api/v1/streams/admin/scoring/{position}", web.apiV1ScoringPanelStreamHandler)
+	mux.HandleFunc("GET /api/v1/streams/admin/referee", web.apiV1RefereePanelStreamHandler)
 }
 
 func (web *Web) apiV1AdminRead(next http.Handler) http.Handler {

@@ -5,8 +5,17 @@
 // Client-side logic for the scoring interface.
 
 var websocket;
+var stateWebsocket;
+let bootstrapRequestId = 0;
 let alliance;
 let committed = false;
+const legacyMatchStateIds = {pre_match: 0, start_match: 1, auto: 2, pause: 3, teleop: 4, post_match: 5, timeout_active: 6, post_timeout: 7};
+const legacyControlScore = data => ({Red: {Score: {AutoTowerStatuses: data.red.autoTowerStatuses, EndgameTowerStatuses: data.red.endgameTowerStatuses,
+  Fouls: data.red.fouls.map(foul => ({FoulId: foul.foulId, IsMajor: foul.isMajor, TeamId: foul.teamId, RuleId: foul.ruleId}))}},
+Blue: {Score: {AutoTowerStatuses: data.blue.autoTowerStatuses, EndgameTowerStatuses: data.blue.endgameTowerStatuses,
+  Fouls: data.blue.fouls.map(foul => ({FoulId: foul.foulId, IsMajor: foul.isMajor, TeamId: foul.teamId, RuleId: foul.ruleId}))}}});
+const legacyScoringMatch = data => ({Match: {LongName: data.longName, Red1: data.red[0], Red2: data.red[1], Red3: data.red[2], Blue1: data.blue[0], Blue2: data.blue[1], Blue3: data.blue[2]}});
+const handleV1MatchClock = data => handleMatchTime({MatchState: legacyMatchStateIds[data.state], MatchTimeSec: data.elapsedSec});
 
 // True when scoring controls in general should be available
 let scoringAvailable = false;
@@ -162,25 +171,35 @@ const commitMatchScore = function () {
   updateUIMode();
 };
 
+const applyScoringBootstrap = function (data) {
+  resetLocalState(); handleMatchLoad(legacyScoringMatch(data.match)); handleV1MatchClock(data.matchClock); handleRealtimeScore(legacyControlScore(data.realtimeScore));
+};
+const loadScoringBootstrap = function (position) {
+  const requestId = ++bootstrapRequestId; const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 5000);
+  return fetch("/api/v1/admin/scoring/" + position + "/bootstrap", {signal: controller.signal})
+    .then(response => { if (!response.ok) { throw new Error("Unable to load scoring bootstrap: " + response.status); } return response.json(); })
+    .then(response => { if (requestId === bootstrapRequestId) { applyScoringBootstrap(response.data); } })
+    .catch(error => console.error(error)).finally(() => clearTimeout(timeout));
+};
+
 $(function () {
   position = window.location.href.split("/").slice(-1)[0];
   alliance = position;
   $(".container").attr("data-alliance", alliance);
   resetLocalState();
 
-  // Set up the websocket back to the server.
-  websocket = new CheesyWebsocket("/panels/scoring/" + position + "/websocket", {
-    matchLoad: function (event) {
-      handleMatchLoad(event.data);
+  websocket = new CheesyWebsocket("/panels/scoring/" + position + "/websocket", {resetLocalState: resetLocalState});
+  loadScoringBootstrap(position).finally(function () {
+    stateWebsocket = new CheesyWebsocketV1("/api/v1/streams/admin/scoring/" + position, {
+    match: function (event) {
+      handleMatchLoad(legacyScoringMatch(event.data));
     },
-    matchTime: function (event) {
-      handleMatchTime(event.data);
+    matchClock: function (event) {
+      handleV1MatchClock(event.data);
     },
     realtimeScore: function (event) {
-      handleRealtimeScore(event.data);
+      handleRealtimeScore(legacyControlScore(event.data));
     },
-    resetLocalState: function (event) {
-      resetLocalState();
-    },
+    }, function () { return loadScoringBootstrap(position); });
   });
 });

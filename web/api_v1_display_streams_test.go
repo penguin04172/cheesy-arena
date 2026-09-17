@@ -285,6 +285,51 @@ func TestMatchPlayClientSplitsStateAndCommands(t *testing.T) {
 	assert.Contains(t, source, "/api/v1/admin/match-play/bootstrap")
 }
 
+func TestApiV1ScoringAndRefereeBootstrapsAndStreams(t *testing.T) {
+	web := setupTestWeb(t)
+	assert.Equal(t, http.StatusNotFound, web.getHttpResponse("/api/v1/admin/scoring/invalid/bootstrap").Code)
+	for _, path := range []string{"/api/v1/admin/scoring/red/bootstrap", "/api/v1/admin/scoring/blue/bootstrap", "/api/v1/admin/referee/bootstrap"} {
+		response := web.getHttpResponse(path)
+		require.Equal(t, http.StatusOK, response.Code)
+		assert.Contains(t, response.Body.String(), "realtimeScore")
+	}
+	server, wsUrl := web.startTestServer()
+	defer server.Close()
+	for _, test := range []struct {
+		path     string
+		expected []string
+	}{
+		{"/api/v1/streams/admin/scoring/red", []string{"match", "matchClock", "realtimeScore"}},
+		{"/api/v1/streams/admin/referee", []string{"match", "matchClock", "realtimeScore", "scoringStatus", "stationStatuses"}},
+	} {
+		conn, _, err := gorillawebsocket.DefaultDialer.Dial(wsUrl+test.path, nil)
+		require.NoError(t, err)
+		for _, expected := range test.expected {
+			var message cawebsocket.V1Message
+			require.NoError(t, conn.ReadJSON(&message))
+			assert.Equal(t, expected, message.Type)
+		}
+		var ready cawebsocket.V1Message
+		require.NoError(t, conn.ReadJSON(&ready))
+		assert.Equal(t, "ready", ready.Type)
+		require.NoError(t, conn.Close())
+	}
+}
+
+func TestScoringAndRefereeClientsSplitStateAndCommands(t *testing.T) {
+	for _, test := range []struct{ path, commandSocket, bootstrap string }{
+		{"../static/js/scoring_panel.js", "new CheesyWebsocket(\"/panels/scoring/\"", "/api/v1/admin/scoring/"},
+		{"../static/js/referee_panel.js", "new CheesyWebsocket(\"/panels/referee/websocket\", {})", "/api/v1/admin/referee/bootstrap"},
+	} {
+		contents, err := os.ReadFile(test.path)
+		require.NoError(t, err)
+		source := string(contents)
+		assert.Contains(t, source, "new CheesyWebsocketV1")
+		assert.Contains(t, source, test.commandSocket)
+		assert.Contains(t, source, test.bootstrap)
+	}
+}
+
 func TestApiV1QueueingStreamBootstrapReadyAndUpdate(t *testing.T) {
 	web := setupTestWeb(t)
 	server, wsUrl := web.startTestServer()
