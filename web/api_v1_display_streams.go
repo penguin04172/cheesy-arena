@@ -217,20 +217,32 @@ func (web *Web) apiV1AnnouncerBootstrapHandler(w http.ResponseWriter, r *http.Re
 }
 
 func (web *Web) apiV1QueueingStreamHandler(w http.ResponseWriter, r *http.Request) {
+	display, err := web.registerDisplayForPath(r, "/displays/queueing/websocket")
+	if err != nil {
+		handleWebErr(w, err)
+		return
+	}
+	defer web.arena.MarkDisplayDisconnected(display.DisplayConfiguration.Id)
 	ws, err := websocket.NewWebsocket(w, r)
 	if err != nil {
 		return
 	}
 	defer ws.Close()
-	ws.HandleNotifiersV1(web.apiV1Displays.queueingMatches, web.apiV1Displays.matchClock, web.apiV1Displays.timing, web.apiV1Displays.eventStatus, web.apiV1Displays.reload)
+	ws.HandleNotifiersV1(display.Notifier, web.apiV1Displays.queueingMatches, web.apiV1Displays.timing, web.apiV1Displays.matchClock, web.apiV1Displays.eventStatus, web.apiV1Displays.reload)
 }
 func (web *Web) apiV1AnnouncerStreamHandler(w http.ResponseWriter, r *http.Request) {
+	display, err := web.registerDisplayForPath(r, "/displays/announcer/websocket")
+	if err != nil {
+		handleWebErr(w, err)
+		return
+	}
+	defer web.arena.MarkDisplayDisconnected(display.DisplayConfiguration.Id)
 	ws, err := websocket.NewWebsocket(w, r)
 	if err != nil {
 		return
 	}
 	defer ws.Close()
-	ws.HandleNotifiersV1(web.apiV1Displays.announcerMatch, web.apiV1Displays.postedScore, web.apiV1Displays.realtimeScore, web.apiV1Displays.matchClock, web.apiV1Displays.timing, web.apiV1Displays.eventStatus, web.apiV1Displays.audienceMode, web.apiV1Displays.reload)
+	ws.HandleNotifiersV1(display.Notifier, web.apiV1Displays.announcerMatch, web.apiV1Displays.postedScore, web.apiV1Displays.realtimeScore, web.apiV1Displays.timing, web.apiV1Displays.matchClock, web.apiV1Displays.eventStatus, web.apiV1Displays.audienceMode, web.apiV1Displays.reload)
 }
 
 func apiV1MatchState(state field.MatchState) string {

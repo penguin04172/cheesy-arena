@@ -56,11 +56,11 @@ func TestApiV1QueueingStreamBootstrapReadyAndUpdate(t *testing.T) {
 	web := setupTestWeb(t)
 	server, wsUrl := web.startTestServer()
 	defer server.Close()
-	conn, _, err := gorillawebsocket.DefaultDialer.Dial(wsUrl+"/api/v1/streams/displays/queueing", nil)
+	conn, _, err := gorillawebsocket.DefaultDialer.Dial(wsUrl+"/api/v1/streams/displays/queueing?displayId=1", nil)
 	require.NoError(t, err)
 	defer conn.Close()
 
-	for _, expectedType := range []string{"matches", "matchClock", "timing", "eventStatus"} {
+	for _, expectedType := range []string{"displayConfiguration", "matches", "timing", "matchClock", "eventStatus"} {
 		var message cawebsocket.V1Message
 		require.NoError(t, conn.ReadJSON(&message))
 		assert.Equal(t, expectedType, message.Type)
@@ -78,4 +78,27 @@ func TestApiV1QueueingStreamBootstrapReadyAndUpdate(t *testing.T) {
 	assert.Equal(t, "eventStatus", update.Type)
 	assert.False(t, update.Meta.Bootstrap)
 	assert.Equal(t, uint64(1), update.Meta.Sequence)
+}
+
+func TestApiV1AnnouncerStreamBootstrapContract(t *testing.T) {
+	web := setupTestWeb(t)
+	server, wsUrl := web.startTestServer()
+	defer server.Close()
+	conn, _, err := gorillawebsocket.DefaultDialer.Dial(wsUrl+"/api/v1/streams/displays/announcer?displayId=2", nil)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	for _, expectedType := range []string{
+		"displayConfiguration", "match", "postedScore", "realtimeScore", "timing", "matchClock",
+		"eventStatus", "audienceDisplayMode",
+	} {
+		var message cawebsocket.V1Message
+		require.NoError(t, conn.ReadJSON(&message))
+		assert.Equal(t, expectedType, message.Type)
+		assert.True(t, message.Meta.Bootstrap)
+	}
+	var ready cawebsocket.V1Message
+	require.NoError(t, conn.ReadJSON(&ready))
+	assert.Equal(t, "ready", ready.Type)
+	assert.Equal(t, 1, web.arena.Displays["2"].ConnectionCount)
 }

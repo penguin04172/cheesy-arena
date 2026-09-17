@@ -69,3 +69,12 @@ func (web *Web) registerDisplay(r *http.Request) (*field.Display, error) {
 
 	return web.arena.RegisterDisplay(displayConfig, ipAddress), nil
 }
+
+// Registers a display for a v1 stream route while preserving the legacy display URL as the configuration identity.
+func (web *Web) registerDisplayForPath(r *http.Request, displayWebsocketPath string) (*field.Display, error) {
+	request := r.Clone(r.Context())
+	urlCopy := *r.URL
+	urlCopy.Path = displayWebsocketPath
+	request.URL = &urlCopy
+	return web.registerDisplay(request)
+}

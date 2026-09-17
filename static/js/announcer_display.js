@@ -4,7 +4,7 @@
 // Client-side logic for the announcer display.
 
 var websocket;
-let isFirstScorePosted = true;
+let bootstrapRequestId = 0;
 
 // Handles a websocket message to hide the score dialog once the next match is being introduced.
 var handleAudienceDisplayMode = function (targetScreen) {
@@ -16,30 +16,18 @@ var handleAudienceDisplayMode = function (targetScreen) {
 
 // Handles a websocket message to update the event status message.
 const handleEventStatus = function (data) {
-  if (data.CycleTime === "") {
+  if (data.cycleTime === "") {
     $("#cycleTimeMessage").text("Last cycle time: Unknown");
   } else {
-    $("#cycleTimeMessage").text("Last cycle time: " + data.CycleTime);
+    $("#cycleTimeMessage").text("Last cycle time: " + data.cycleTime);
   }
-  $("#earlyLateMessage").text(data.EarlyLateMessage);
+  $("#earlyLateMessage").text(data.earlyLateMessage);
 };
 
 // Handles a websocket message to update the teams for the current match.
 var handleMatchLoad = function (data) {
-  $("#matchName").text(data.Match.LongName);
-
-  const teams = $("#teams");
-  teams.empty();
-
-  fetch("/api/v1/displays/announcer/match")
-    .then(response => {
-      if (!response.ok) {
-        throw new Error("Unable to load announcer match data: " + response.status);
-      }
-      return response.json();
-    })
-    .then(response => renderAnnouncerMatch(response.data))
-    .catch(error => console.error(error));
+  $("#matchName").text(data.longName);
+  renderAnnouncerMatch(data);
 };
 
 const renderAnnouncerTeam = function (team) {
@@ -118,36 +106,20 @@ var handleMatchTime = function (data) {
 
 // Handles a websocket message to update the match score.
 var handleRealtimeScore = function (data) {
-  $("#redScore").text(data.Red.ScoreSummary.Score - data.Red.ScoreSummary.PostMatchPoints);
-  $("#blueScore").text(data.Blue.ScoreSummary.Score - data.Blue.ScoreSummary.PostMatchPoints);
+  $("#redScore").text(data.red);
+  $("#blueScore").text(data.blue);
 };
 
 // Handles a websocket message to populate the final score data.
 var handleScorePosted = function (data) {
-  if (isFirstScorePosted) {
-    // Don't show the final score dialog when the page is first loaded.
-    isFirstScorePosted = false;
-    return;
-  }
-
   const matchResult = document.getElementById("matchResult");
-  fetch("/api/v1/displays/announcer/score")
-    .then(response => {
-      if (!response.ok) {
-        throw new Error("Unable to load announcer score: " + response.status);
-      }
-      return response.json();
-    })
-    .then(response => {
-      renderAnnouncerScore(matchResult, response.data);
-      const modal = new bootstrap.Modal(matchResult);
-      modal.show();
+  renderAnnouncerScore(matchResult, data);
+  const modal = new bootstrap.Modal(matchResult);
+  modal.show();
 
-      // Activate tooltips above the foul listings.
-      const tooltipTriggerList = document.querySelectorAll("[data-bs-toggle=tooltip]");
-      const tooltipList = [...tooltipTriggerList].map(element => new bootstrap.Tooltip(element));
-    })
-    .catch(error => console.error(error));
+  // Activate tooltips above the foul listings.
+  const tooltipTriggerList = document.querySelectorAll("[data-bs-toggle=tooltip]");
+  const tooltipList = [...tooltipTriggerList].map(element => new bootstrap.Tooltip(element));
 };
 
 const scoreRow = function (label, value, emphasized) {
@@ -202,30 +174,70 @@ const renderAnnouncerScore = function (container, score) {
   $(container).empty().append($("<div>").addClass("modal-dialog modal-xl").append(content));
 };
 
+const legacyMatchStateIds = {
+  pre_match: 0,
+  start_match: 1,
+  auto: 2,
+  pause: 3,
+  teleop: 4,
+  post_match: 5,
+  timeout_active: 6,
+  post_timeout: 7,
+};
+
+const handleV1Timing = function (data) {
+  handleMatchTiming({
+    AutoDurationSec: data.autoDurationSec,
+    PauseDurationSec: data.pauseDurationSec,
+    TransitionShiftDurationSec: data.transitionShiftDurationSec,
+    ShiftDurationSec: data.shiftDurationSec,
+    EndgameDurationSec: data.endgameDurationSec,
+    TimeoutDurationSec: data.timeoutDurationSec,
+  });
+};
+
+const handleV1MatchClock = function (data) {
+  handleMatchTime({MatchState: legacyMatchStateIds[data.state], MatchTimeSec: data.elapsedSec});
+};
+
+const applyAnnouncerBootstrap = function (data) {
+  handleMatchLoad(data.match);
+  handleRealtimeScore(data.realtimeScore);
+  handleV1Timing(data.timing);
+  handleV1MatchClock(data.matchClock);
+  handleEventStatus(data.event);
+  handleAudienceDisplayMode(data.audienceDisplayMode);
+};
+
+const loadAnnouncerBootstrap = function () {
+  const requestId = ++bootstrapRequestId;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  return fetch("/api/v1/displays/announcer/bootstrap", {signal: controller.signal})
+    .then(response => {
+      if (!response.ok) { throw new Error("Unable to load announcer bootstrap: " + response.status); }
+      return response.json();
+    })
+    .then(response => {
+      if (requestId === bootstrapRequestId) { applyAnnouncerBootstrap(response.data); }
+    })
+    .catch(error => console.error(error))
+    .finally(() => clearTimeout(timeout));
+};
+
 $(function () {
-  // Set up the websocket back to the server.
-  websocket = new CheesyWebsocket("/displays/announcer/websocket", {
-    audienceDisplayMode: function (event) {
-      handleAudienceDisplayMode(event.data);
-    },
-    eventStatus: function (event) {
-      handleEventStatus(event.data);
-    },
-    matchLoad: function (event) {
-      handleMatchLoad(event.data);
-    },
-    matchTime: function (event) {
-      handleMatchTime(event.data);
-    },
-    matchTiming: function (event) {
-      handleMatchTiming(event.data);
-    },
-    realtimeScore: function (event) {
-      handleRealtimeScore(event.data);
-    },
-    scorePosted: function (event) {
-      handleScorePosted(event.data);
-    }
+  loadAnnouncerBootstrap().finally(function () {
+    websocket = new CheesyWebsocketV1("/api/v1/streams/displays/announcer", {
+      match: function (event) { handleMatchLoad(event.data); },
+      postedScore: function (event) {
+        if (!event.meta.bootstrap && event.data !== null) { handleScorePosted(event.data); }
+      },
+      realtimeScore: function (event) { handleRealtimeScore(event.data); },
+      timing: function (event) { handleV1Timing(event.data); },
+      matchClock: function (event) { handleV1MatchClock(event.data); },
+      eventStatus: function (event) { handleEventStatus(event.data); },
+      audienceDisplayMode: function (event) { handleAudienceDisplayMode(event.data); },
+    }, loadAnnouncerBootstrap);
   });
 
   // Make the score blink.

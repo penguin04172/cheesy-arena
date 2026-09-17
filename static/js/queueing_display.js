@@ -4,18 +4,11 @@
 // Client-side logic for the queueing display.
 
 var websocket;
+let bootstrapRequestId = 0;
 
 // Handles a websocket message to update the teams for the current match.
 var handleMatchLoad = function (data) {
-  fetch("/api/v1/displays/queueing/matches")
-    .then(response => {
-      if (!response.ok) {
-        throw new Error("Unable to load queueing matches: " + response.status);
-      }
-      return response.json();
-    })
-    .then(response => renderMatches(response.data))
-    .catch(error => console.error(error));
+  renderMatches(data);
 };
 
 var renderTeamAvatars = function (teamIds) {
@@ -125,23 +118,73 @@ var handleMatchTime = function (data) {
 
 // Handles a websocket message to update the event status message.
 var handleEventStatus = function (data) {
-  $("#earlyLateMessage").text(data.EarlyLateMessage);
+  $("#earlyLateMessage").text(data.earlyLateMessage);
+};
+
+const legacyMatchStateIds = {
+  pre_match: 0,
+  start_match: 1,
+  auto: 2,
+  pause: 3,
+  teleop: 4,
+  post_match: 5,
+  timeout_active: 6,
+  post_timeout: 7,
+};
+
+const handleV1Timing = function (data) {
+  handleMatchTiming({
+    AutoDurationSec: data.autoDurationSec,
+    PauseDurationSec: data.pauseDurationSec,
+    TransitionShiftDurationSec: data.transitionShiftDurationSec,
+    ShiftDurationSec: data.shiftDurationSec,
+    EndgameDurationSec: data.endgameDurationSec,
+    TimeoutDurationSec: data.timeoutDurationSec,
+  });
+};
+
+const handleV1MatchClock = function (data) {
+  handleMatchTime({MatchState: legacyMatchStateIds[data.state], MatchTimeSec: data.elapsedSec});
+};
+
+const applyQueueingBootstrap = function (data) {
+  renderMatches(data.matches);
+  handleV1Timing(data.timing);
+  handleV1MatchClock(data.matchClock);
+  handleEventStatus(data.event);
+};
+
+const loadQueueingBootstrap = function () {
+  const requestId = ++bootstrapRequestId;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  return fetch("/api/v1/displays/queueing/bootstrap", {signal: controller.signal})
+    .then(response => {
+      if (!response.ok) { throw new Error("Unable to load queueing bootstrap: " + response.status); }
+      return response.json();
+    })
+    .then(response => {
+      if (requestId === bootstrapRequestId) { applyQueueingBootstrap(response.data); }
+    })
+    .catch(error => console.error(error))
+    .finally(() => clearTimeout(timeout));
 };
 
 $(function () {
-  // Set up the websocket back to the server.
-  websocket = new CheesyWebsocket("/displays/queueing/websocket", {
-    eventStatus: function (event) {
-      handleEventStatus(event.data);
-    },
-    matchLoad: function (event) {
-      handleMatchLoad(event.data);
-    },
-    matchTime: function (event) {
-      handleMatchTime(event.data);
-    },
-    matchTiming: function (event) {
-      handleMatchTiming(event.data);
-    },
+  loadQueueingBootstrap().finally(function () {
+    websocket = new CheesyWebsocketV1("/api/v1/streams/displays/queueing", {
+      matches: function (event) {
+        handleMatchLoad(event.data);
+      },
+      timing: function (event) {
+        handleV1Timing(event.data);
+      },
+      matchClock: function (event) {
+        handleV1MatchClock(event.data);
+      },
+      eventStatus: function (event) {
+        handleEventStatus(event.data);
+      },
+    }, loadQueueingBootstrap);
   });
 });

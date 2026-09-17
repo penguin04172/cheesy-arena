@@ -76,6 +76,54 @@ var CheesyWebsocketV1 = function (path, events, onGap) {
   this.sequences = {};
   this.ready = false;
   this.hasConnected = false;
+  this.recovering = false;
+  this.recoveryQueue = [];
+
+  var displayId = new URLSearchParams(window.location.search).get("displayId");
+  if (!events.hasOwnProperty("reload")) {
+    events.reload = function (event) {
+      if (event.data === null || event.data === displayId) { location.reload(); }
+    };
+  }
+  if (!events.hasOwnProperty("displayConfiguration")) {
+    events.displayConfiguration = function (event) {
+      if (event.data !== window.location.pathname + window.location.search) { window.location = event.data; }
+    };
+  }
+
+  const beginRecovery = function (reason, previous, next) {
+    if (!onGap || that.recovering) { return; }
+    that.recovering = true;
+    Promise.resolve(onGap(reason, previous, next))
+      .catch(error => console.error(error))
+      .finally(function () {
+        const queued = that.recoveryQueue;
+        that.recoveryQueue = [];
+        that.recovering = false;
+        queued.forEach(message => processMessage(message, true));
+      });
+  };
+
+  const processMessage = function (message, replayed) {
+    if (!message.meta || message.meta.version !== 1) { return; }
+    if (message.type === "ready") {
+      that.sequences = message.data.sequences || {};
+      that.ready = true;
+      if (events.ready) { events.ready(message); }
+      return;
+    }
+    if (message.type === "ping") { return; }
+    const previous = that.sequences[message.type];
+    if (!replayed && !message.meta.bootstrap && previous !== undefined && message.meta.sequence !== previous + 1) {
+      that.ready = false;
+      that.sequences[message.type] = message.meta.sequence;
+      that.recoveryQueue.push(message);
+      beginRecovery(message.type, previous, message.meta.sequence);
+      return;
+    }
+    that.sequences[message.type] = message.meta.sequence;
+    if (events[message.type]) { events[message.type](message); }
+  };
 
   this.connect = function () {
     var protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
@@ -83,7 +131,7 @@ var CheesyWebsocketV1 = function (path, events, onGap) {
     that.websocket = socket;
     socket.onopen = function () {
       console.log("Websocket v1 connected to " + path + ".");
-      if (that.hasConnected && onGap) { onGap("reconnect", null, null); }
+      if (that.hasConnected) { beginRecovery("reconnect", null, null); }
       that.hasConnected = true;
     };
     socket.onclose = function () {
@@ -93,21 +141,11 @@ var CheesyWebsocketV1 = function (path, events, onGap) {
     };
     socket.onmessage = function (event) {
       var message = JSON.parse(event.data);
-      if (!message.meta || message.meta.version !== 1) { return; }
-      if (message.type === "ready") {
-        that.sequences = message.data.sequences || {};
-        that.ready = true;
-        if (events.ready) { events.ready(message); }
-        return;
+      if (that.recovering) {
+        that.recoveryQueue.push(message);
+      } else {
+        processMessage(message, false);
       }
-      if (message.type === "ping") { return; }
-      var previous = that.sequences[message.type];
-      if (!message.meta.bootstrap && previous !== undefined && message.meta.sequence !== previous + 1) {
-        that.ready = false;
-        if (onGap) { onGap(message.type, previous, message.meta.sequence); }
-      }
-      that.sequences[message.type] = message.meta.sequence;
-      if (events[message.type]) { events[message.type](message); }
     };
   };
 
