@@ -746,6 +746,15 @@ paths:
         "200": {description: Alliance selection timer, rankings, and audience display mode snapshot}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
+  /admin/match-play/bootstrap:
+    get:
+      operationId: getMatchPlayControlBootstrap
+      summary: Get the complete match play control read-model and stream URL
+      security: [{sessionCookie: []}]
+      responses:
+        "200": {description: Match, arena readiness, score, display mode, and scoring commit snapshot}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
   /displays/queueing/matches:
     get:
       operationId: listQueueingDisplayMatches
@@ -895,6 +904,14 @@ paths:
     get:
       operationId: streamAllianceSelectionControl
       summary: Upgrade to the sequenced alliance selection control read-model stream
+      security: [{sessionCookie: []}]
+      x-websocket: true
+      responses:
+        "101": {description: WebSocket protocol switched; messages use the v1 stream envelope.}
+  /streams/admin/match-play:
+    get:
+      operationId: streamMatchPlayControl
+      summary: Upgrade to the sequenced match play control read-model stream
       security: [{sessionCookie: []}]
       x-websocket: true
       responses:

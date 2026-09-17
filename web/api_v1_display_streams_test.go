@@ -243,6 +243,48 @@ func TestAllianceSelectionClientSplitsStateAndCommands(t *testing.T) {
 	assert.Contains(t, source, "/api/v1/admin/alliance-selection/bootstrap")
 }
 
+func TestApiV1MatchPlayBootstrapAndStream(t *testing.T) {
+	web := setupTestWeb(t)
+	team := model.Team{Id: 254, Nickname: "Poofs", WpaKey: "match-play-secret", FtaNotes: "private"}
+	require.NoError(t, web.arena.Database.CreateTeam(&team))
+	require.NoError(t, web.arena.SubstituteTeams(254, 0, 0, 0, 0, 0))
+	web.arena.MatchLoadNotifier.Notify()
+	web.arena.ArenaStatusNotifier.Notify()
+	response := web.getHttpResponse("/api/v1/admin/match-play/bootstrap")
+	require.Equal(t, http.StatusOK, response.Code)
+	assert.NotContains(t, response.Body.String(), "match-play-secret")
+	assert.NotContains(t, response.Body.String(), "private")
+	var body struct {
+		Data apiV1MatchPlayBootstrap `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &body))
+	assert.Equal(t, "/api/v1/streams/admin/match-play", body.Data.StreamUrl)
+	require.NotNil(t, body.Data.Match.Teams["R1"])
+
+	server, wsUrl := web.startTestServer()
+	defer server.Close()
+	conn, _, err := gorillawebsocket.DefaultDialer.Dial(wsUrl+"/api/v1/streams/admin/match-play", nil)
+	require.NoError(t, err)
+	defer conn.Close()
+	for _, expected := range []string{"match", "arenaStatus", "audienceDisplayMode", "allianceStationDisplayMode", "eventStatus", "realtimeScore", "postedScore", "scoringStatus", "timing", "matchClock"} {
+		var message cawebsocket.V1Message
+		require.NoError(t, conn.ReadJSON(&message))
+		assert.Equal(t, expected, message.Type)
+	}
+	var ready cawebsocket.V1Message
+	require.NoError(t, conn.ReadJSON(&ready))
+	assert.Equal(t, "ready", ready.Type)
+}
+
+func TestMatchPlayClientSplitsStateAndCommands(t *testing.T) {
+	contents, err := os.ReadFile("../static/js/match_play.js")
+	require.NoError(t, err)
+	source := string(contents)
+	assert.Contains(t, source, "new CheesyWebsocketV1")
+	assert.Contains(t, source, "new CheesyWebsocket(\"/match_play/websocket\", {})")
+	assert.Contains(t, source, "/api/v1/admin/match-play/bootstrap")
+}
+
 func TestApiV1QueueingStreamBootstrapReadyAndUpdate(t *testing.T) {
 	web := setupTestWeb(t)
 	server, wsUrl := web.startTestServer()

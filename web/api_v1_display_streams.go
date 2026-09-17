@@ -171,6 +171,51 @@ type apiV1AllianceSelectionControlBootstrap struct {
 	AllianceSelection apiV1AudienceAllianceSelection `json:"allianceSelection"`
 }
 
+type apiV1MatchPlayMatch struct {
+	apiV1DisplayMatch
+	AllowSubstitution bool `json:"allowSubstitution"`
+	IsReplay          bool `json:"isReplay"`
+}
+
+type apiV1MatchPlayArenaStatus struct {
+	State                 string                              `json:"state"`
+	CanStartMatch         bool                                `json:"canStartMatch"`
+	StartMatchConditions  []string                            `json:"startMatchConditions"`
+	Stations              map[string]apiV1FieldMonitorStation `json:"stations"`
+	AccessPointStatus     string                              `json:"accessPointStatus"`
+	SwitchStatus          string                              `json:"switchStatus"`
+	RedSccStatus          string                              `json:"redSccStatus"`
+	BlueSccStatus         string                              `json:"blueSccStatus"`
+	PlcIsHealthy          bool                                `json:"plcIsHealthy"`
+	FieldEStop            bool                                `json:"fieldEStop"`
+	IsFtaReady            bool                                `json:"isFtaReady"`
+	PlcArmorBlockStatuses map[string]bool                     `json:"plcArmorBlockStatuses"`
+}
+
+type apiV1ScoringPositionStatus struct {
+	Ready          bool `json:"ready"`
+	NumPanels      int  `json:"numPanels"`
+	NumPanelsReady int  `json:"numPanelsReady"`
+}
+type apiV1ScoringStatus struct {
+	RefereeScoreReady bool                                  `json:"refereeScoreReady"`
+	Positions         map[string]apiV1ScoringPositionStatus `json:"positions"`
+}
+
+type apiV1MatchPlayBootstrap struct {
+	StreamUrl                  string                     `json:"streamUrl"`
+	Match                      apiV1MatchPlayMatch        `json:"match"`
+	ArenaStatus                apiV1MatchPlayArenaStatus  `json:"arenaStatus"`
+	RealtimeScore              apiV1AudienceRealtimeScore `json:"realtimeScore"`
+	PostedScore                *apiV1AudiencePostedScore  `json:"postedScore"`
+	ScoringStatus              apiV1ScoringStatus         `json:"scoringStatus"`
+	MatchClock                 apiV1MatchClock            `json:"matchClock"`
+	Timing                     apiV1DisplayMatchTiming    `json:"timing"`
+	Event                      apiV1DisplayEventStatus    `json:"event"`
+	AudienceDisplayMode        string                     `json:"audienceDisplayMode"`
+	AllianceStationDisplayMode string                     `json:"allianceStationDisplayMode"`
+}
+
 type apiV1FieldMonitorTeam struct {
 	Id       int     `json:"id"`
 	FtaNotes *string `json:"ftaNotes,omitempty"`
@@ -251,6 +296,7 @@ type apiV1DisplayState struct {
 	unpicked        apiV1UnpickedBootstrap
 	fieldMonitor    apiV1FieldMonitorBootstrap
 	fieldMonitorFta apiV1FieldMonitorBootstrap
+	matchPlay       apiV1MatchPlayBootstrap
 
 	queueingMatches       *websocket.Notifier
 	announcerMatch        *websocket.Notifier
@@ -271,6 +317,9 @@ type apiV1DisplayState struct {
 	stationStatuses       *websocket.Notifier
 	fieldMonitorStatus    *websocket.Notifier
 	fieldMonitorFtaStatus *websocket.Notifier
+	matchPlayMatch        *websocket.Notifier
+	matchPlayArenaStatus  *websocket.Notifier
+	scoringStatus         *websocket.Notifier
 }
 
 func (web *Web) initializeApiV1DisplayState() {
@@ -284,6 +333,7 @@ func (web *Web) initializeApiV1DisplayState() {
 	state.unpicked.StreamUrl = "/api/v1/streams/displays/unpicked"
 	state.fieldMonitor.StreamUrl = "/api/v1/streams/displays/field-monitor"
 	state.fieldMonitorFta.StreamUrl = "/api/v1/streams/displays/field-monitor?fta=true"
+	state.matchPlay.StreamUrl = "/api/v1/streams/admin/match-play"
 	web.refreshApiV1DisplayMatches()
 	web.refreshApiV1PostedScore()
 	web.refreshApiV1RealtimeScore()
@@ -294,6 +344,7 @@ func (web *Web) initializeApiV1DisplayState() {
 	web.refreshApiV1AudienceState()
 	web.refreshApiV1AllianceStationState()
 	web.refreshApiV1FieldMonitorStatus()
+	web.refreshApiV1MatchPlayState()
 
 	state.queueingMatches = websocket.NewNotifier("matches", func() any { return web.apiV1QueueingMatchesSnapshot() })
 	state.announcerMatch = websocket.NewNotifier("match", func() any { return web.apiV1AnnouncerMatchSnapshot() })
@@ -314,6 +365,9 @@ func (web *Web) initializeApiV1DisplayState() {
 	state.stationStatuses = websocket.NewNotifier("stationStatuses", func() any { return web.apiV1StationStatusesSnapshot() })
 	state.fieldMonitorStatus = websocket.NewNotifier("arenaStatus", func() any { return web.apiV1FieldMonitorStatusSnapshot(false) })
 	state.fieldMonitorFtaStatus = websocket.NewNotifier("arenaStatus", func() any { return web.apiV1FieldMonitorStatusSnapshot(true) })
+	state.matchPlayMatch = websocket.NewNotifier("match", func() any { return web.apiV1MatchPlayMatchSnapshot() })
+	state.matchPlayArenaStatus = websocket.NewNotifier("arenaStatus", func() any { return web.apiV1MatchPlayArenaStatusSnapshot() })
+	state.scoringStatus = websocket.NewNotifier("scoringStatus", func() any { return web.apiV1ScoringStatusSnapshot() })
 
 	web.arena.MatchLoadNotifier.Observe(func(any) {
 		web.refreshApiV1DisplayMatches()
@@ -321,6 +375,8 @@ func (web *Web) initializeApiV1DisplayState() {
 		state.queueingMatches.Notify()
 		state.announcerMatch.Notify()
 		state.displayMatch.Notify()
+		web.refreshApiV1MatchPlayMatch()
+		state.matchPlayMatch.Notify()
 	})
 	web.arena.ScorePostedNotifier.Observe(func(any) {
 		web.refreshApiV1PostedScore()
@@ -348,7 +404,10 @@ func (web *Web) initializeApiV1DisplayState() {
 		state.stationStatuses.Notify()
 		state.fieldMonitorStatus.Notify()
 		state.fieldMonitorFtaStatus.Notify()
+		web.refreshApiV1MatchPlayArenaStatus()
+		state.matchPlayArenaStatus.Notify()
 	})
+	web.arena.ScoringStatusNotifier.Observe(func(any) { web.refreshApiV1ScoringStatus(); state.scoringStatus.Notify() })
 	web.arena.ReloadDisplaysNotifier.Observe(func(value any) { state.reload.NotifyWithMessage(value) })
 }
 
@@ -392,6 +451,7 @@ func (web *Web) refreshApiV1MatchClock() {
 	web.apiV1Displays.wall.MatchClock = value
 	web.apiV1Displays.fieldMonitor.MatchClock = value
 	web.apiV1Displays.fieldMonitorFta.MatchClock = value
+	web.apiV1Displays.matchPlay.MatchClock = value
 	web.apiV1Displays.mu.Unlock()
 }
 func (web *Web) refreshApiV1DisplayTiming() {
@@ -404,6 +464,7 @@ func (web *Web) refreshApiV1DisplayTiming() {
 	web.apiV1Displays.wall.Timing = value
 	web.apiV1Displays.fieldMonitor.Timing = value
 	web.apiV1Displays.fieldMonitorFta.Timing = value
+	web.apiV1Displays.matchPlay.Timing = value
 	web.apiV1Displays.mu.Unlock()
 }
 func (web *Web) refreshApiV1EventStatus() {
@@ -413,6 +474,7 @@ func (web *Web) refreshApiV1EventStatus() {
 	web.apiV1Displays.announcer.Event = value
 	web.apiV1Displays.fieldMonitor.Event = value
 	web.apiV1Displays.fieldMonitorFta.Event = value
+	web.apiV1Displays.matchPlay.Event = value
 	web.apiV1Displays.mu.Unlock()
 }
 func (web *Web) refreshApiV1AudienceMode() {
@@ -421,6 +483,7 @@ func (web *Web) refreshApiV1AudienceMode() {
 	web.apiV1Displays.audience.DisplayMode = web.arena.AudienceDisplayMode
 	web.apiV1Displays.wall.DisplayMode = web.arena.AudienceDisplayMode
 	web.apiV1Displays.unpicked.DisplayMode = web.arena.AudienceDisplayMode
+	web.apiV1Displays.matchPlay.AudienceDisplayMode = web.arena.AudienceDisplayMode
 	web.apiV1Displays.mu.Unlock()
 }
 
@@ -510,6 +573,7 @@ func (web *Web) refreshApiV1AudienceRealtimeScore() {
 	web.apiV1Displays.wall.RealtimeScore = value
 	web.apiV1Displays.fieldMonitor.RealtimeScore = value
 	web.apiV1Displays.fieldMonitorFta.RealtimeScore = value
+	web.apiV1Displays.matchPlay.RealtimeScore = value
 	web.apiV1Displays.mu.Unlock()
 }
 
@@ -517,6 +581,7 @@ func (web *Web) refreshApiV1AudiencePostedScore() {
 	value := web.buildApiV1AudiencePostedScore()
 	web.apiV1Displays.mu.Lock()
 	web.apiV1Displays.audience.PostedScore = value
+	web.apiV1Displays.matchPlay.PostedScore = value
 	web.apiV1Displays.mu.Unlock()
 }
 
@@ -606,6 +671,7 @@ func (web *Web) refreshApiV1LowerThird() {
 func (web *Web) refreshApiV1AllianceStationMode() {
 	web.apiV1Displays.mu.Lock()
 	web.apiV1Displays.allianceStation.DisplayMode = web.arena.AllianceStationDisplayMode
+	web.apiV1Displays.matchPlay.AllianceStationDisplayMode = web.arena.AllianceStationDisplayMode
 	web.apiV1Displays.mu.Unlock()
 }
 
@@ -630,6 +696,52 @@ func (web *Web) refreshApiV1FieldMonitorStatus() {
 	web.apiV1Displays.mu.Lock()
 	web.apiV1Displays.fieldMonitor.ArenaStatus = publicStatus
 	web.apiV1Displays.fieldMonitorFta.ArenaStatus = ftaStatus
+	web.apiV1Displays.mu.Unlock()
+}
+
+func (web *Web) refreshApiV1MatchPlayState() {
+	web.refreshApiV1MatchPlayMatch()
+	web.refreshApiV1MatchPlayArenaStatus()
+	web.refreshApiV1ScoringStatus()
+}
+
+func (web *Web) refreshApiV1MatchPlayMatch() {
+	match := web.arena.CurrentMatch
+	value := apiV1MatchPlayMatch{apiV1DisplayMatch: web.buildApiV1DisplayMatch(match)}
+	if match != nil {
+		value.AllowSubstitution = match.ShouldAllowSubstitution() && !(web.arena.EventSettings.NexusEnabled && match.ShouldAllowNexusSubstitution())
+		if result, err := web.arena.Database.GetMatchResultForMatch(match.Id); err == nil {
+			value.IsReplay = result != nil
+		}
+	}
+	web.apiV1Displays.mu.Lock()
+	web.apiV1Displays.matchPlay.Match = value
+	web.apiV1Displays.mu.Unlock()
+}
+
+func (web *Web) refreshApiV1MatchPlayArenaStatus() {
+	control := web.arena.MatchPlayControlStatusSnapshot()
+	stations := web.buildApiV1FieldMonitorStatus(false).Stations
+	value := apiV1MatchPlayArenaStatus{State: apiV1MatchState(control.MatchState), CanStartMatch: control.CanStartMatch,
+		StartMatchConditions: control.StartMatchConditions, Stations: stations, AccessPointStatus: control.AccessPointStatus,
+		SwitchStatus: control.SwitchStatus, RedSccStatus: control.RedSCCStatus, BlueSccStatus: control.BlueSCCStatus,
+		PlcIsHealthy: control.PlcIsHealthy, FieldEStop: control.FieldEStop, IsFtaReady: control.IsFtaReady,
+		PlcArmorBlockStatuses: control.PlcArmorBlockStatuses}
+	web.apiV1Displays.mu.Lock()
+	web.apiV1Displays.matchPlay.ArenaStatus = value
+	web.apiV1Displays.mu.Unlock()
+}
+
+func (web *Web) refreshApiV1ScoringStatus() {
+	positions := make(map[string]apiV1ScoringPositionStatus, 2)
+	for _, position := range []string{"red", "blue"} {
+		numPanels := web.arena.ScoringPanelRegistry.GetNumPanels(position)
+		numReady := web.arena.ScoringPanelRegistry.GetNumScoreCommitted(position)
+		positions[position] = apiV1ScoringPositionStatus{Ready: numPanels > 0 && numReady >= numPanels, NumPanels: numPanels, NumPanelsReady: numReady}
+	}
+	value := apiV1ScoringStatus{RefereeScoreReady: web.arena.RedRealtimeScore.FoulsCommitted && web.arena.BlueRealtimeScore.FoulsCommitted, Positions: positions}
+	web.apiV1Displays.mu.Lock()
+	web.apiV1Displays.matchPlay.ScoringStatus = value
 	web.apiV1Displays.mu.Unlock()
 }
 
@@ -742,6 +854,21 @@ func (web *Web) apiV1FieldMonitorStatusSnapshot(isFta bool) any {
 	}
 	return web.apiV1Displays.fieldMonitor.ArenaStatus
 }
+func (web *Web) apiV1MatchPlayMatchSnapshot() any {
+	web.apiV1Displays.mu.RLock()
+	defer web.apiV1Displays.mu.RUnlock()
+	return web.apiV1Displays.matchPlay.Match
+}
+func (web *Web) apiV1MatchPlayArenaStatusSnapshot() any {
+	web.apiV1Displays.mu.RLock()
+	defer web.apiV1Displays.mu.RUnlock()
+	return web.apiV1Displays.matchPlay.ArenaStatus
+}
+func (web *Web) apiV1ScoringStatusSnapshot() any {
+	web.apiV1Displays.mu.RLock()
+	defer web.apiV1Displays.mu.RUnlock()
+	return web.apiV1Displays.matchPlay.ScoringStatus
+}
 
 func (web *Web) apiV1QueueingBootstrapHandler(w http.ResponseWriter, r *http.Request) {
 	web.apiV1Displays.mu.RLock()
@@ -791,6 +918,11 @@ func (web *Web) apiV1AllianceSelectionControlBootstrapHandler(w http.ResponseWri
 		StreamUrl: "/api/v1/streams/admin/alliance-selection", DisplayMode: web.apiV1Displays.unpicked.DisplayMode,
 		AllianceSelection: web.apiV1Displays.unpicked.AllianceSelection,
 	}, nil)
+}
+func (web *Web) apiV1MatchPlayBootstrapHandler(w http.ResponseWriter, r *http.Request) {
+	web.apiV1Displays.mu.RLock()
+	defer web.apiV1Displays.mu.RUnlock()
+	writeApiV1Data(w, r, http.StatusOK, web.apiV1Displays.matchPlay, nil)
 }
 func (web *Web) apiV1FieldMonitorFtaBootstrapHandler(w http.ResponseWriter, r *http.Request) {
 	web.apiV1Displays.mu.RLock()
@@ -924,6 +1056,20 @@ func (web *Web) apiV1AllianceSelectionControlStreamHandler(w http.ResponseWriter
 	}
 	defer ws.Close()
 	ws.HandleNotifiersV1(web.apiV1Displays.allianceSelection, web.apiV1Displays.audienceMode)
+}
+func (web *Web) apiV1MatchPlayStreamHandler(w http.ResponseWriter, r *http.Request) {
+	if !web.userIsAdmin(w, r) {
+		return
+	}
+	ws, err := websocket.NewWebsocket(w, r)
+	if err != nil {
+		return
+	}
+	defer ws.Close()
+	ws.HandleNotifiersV1(web.apiV1Displays.matchPlayMatch, web.apiV1Displays.matchPlayArenaStatus,
+		web.apiV1Displays.audienceMode, web.apiV1Displays.allianceStationMode, web.apiV1Displays.eventStatus,
+		web.apiV1Displays.audienceRealtime, web.apiV1Displays.audiencePosted, web.apiV1Displays.scoringStatus,
+		web.apiV1Displays.timing, web.apiV1Displays.matchClock)
 }
 
 func apiV1MatchState(state field.MatchState) string {

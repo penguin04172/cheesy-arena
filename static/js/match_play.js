@@ -4,9 +4,38 @@
 // Client-side logic for the match play page.
 
 var websocket;
+var stateWebsocket;
+let bootstrapRequestId = 0;
 let scoreIsReady;
 let isReplay;
 const lowBatteryThreshold = 8;
+const legacyMatchStateIds = {pre_match: 0, start_match: 1, auto: 2, pause: 3, teleop: 4, post_match: 5, timeout_active: 6, post_timeout: 7};
+const legacyMatchType = type => type === "qualification" ? matchTypeQualification : (type === "playoff" ? matchTypePlayoff : (type === "practice" ? 1 : matchTypeTest));
+const legacyScoreSummary = function (summary) { const result = {}; Object.keys(summary || {}).forEach(key => { result[key.charAt(0).toUpperCase() + key.slice(1)] = summary[key]; }); return result; };
+const legacyMatchPlayMatch = function (data) {
+  const teams = {}; Object.keys(data.teams || {}).forEach(key => { const team = data.teams[key]; teams[key] = team ? {Id: team.id} : null; });
+  return {Match: {Id: data.id, Type: legacyMatchType(data.type), LongName: data.longName, NameDetail: data.nameDetail,
+    PlayoffRedAlliance: data.playoffRedAlliance, PlayoffBlueAlliance: data.playoffBlueAlliance}, Teams: teams,
+    RedOffFieldTeams: (data.redOffFieldTeams || []).map(team => ({Id: team.id})), BlueOffFieldTeams: (data.blueOffFieldTeams || []).map(team => ({Id: team.id})),
+    BreakDescription: data.breakDescription, BreakNextMatchName: data.breakNextMatchName,
+    AllowSubstitution: data.allowSubstitution, IsReplay: data.isReplay};
+};
+const legacyMatchPlayArenaStatus = function (data) {
+  const stations = {};
+  Object.keys(data.stations || {}).forEach(key => { const item = data.stations[key]; stations[key] = {
+    Team: item.team ? {Id: item.team.id} : null, DsConn: item.connection ? {DsLinked: item.connection.dsLinked, RobotLinked: item.connection.robotLinked,
+      BatteryVoltage: item.connection.batteryVoltage, SecondsSinceLastRobotLink: item.connection.secondsSinceLastRobotLink} : null,
+    WifiStatus: {TeamId: item.wifi.teamId, RadioLinked: item.wifi.radioLinked, MBits: item.wifi.mBits},
+    AStop: item.aStop, EStop: item.eStop, Bypass: item.bypass}; });
+  return {MatchState: legacyMatchStateIds[data.state], CanStartMatch: data.canStartMatch, StartMatchConditions: data.startMatchConditions,
+    AllianceStations: stations, AccessPointStatus: data.accessPointStatus, SwitchStatus: data.switchStatus,
+    RedSCCStatus: data.redSccStatus, BlueSCCStatus: data.blueSccStatus, PlcIsHealthy: data.plcIsHealthy,
+    FieldEStop: data.fieldEStop, IsFtaReady: data.isFtaReady, PlcArmorBlockStatuses: data.plcArmorBlockStatuses};
+};
+const legacyRealtimeScore = data => ({Red: {ScoreSummary: legacyScoreSummary(data.red.summary)}, Blue: {ScoreSummary: legacyScoreSummary(data.blue.summary)}});
+const legacyScoringStatus = data => ({RefereeScoreReady: data.refereeScoreReady, PositionStatuses: Object.fromEntries(Object.entries(data.positions || {}).map(([key, value]) => [key, {Ready: value.ready, NumPanels: value.numPanels, NumPanelsReady: value.numPanelsReady}]))});
+const handleV1Timing = data => handleMatchTiming({AutoDurationSec: data.autoDurationSec, PauseDurationSec: data.pauseDurationSec, TransitionShiftDurationSec: data.transitionShiftDurationSec, ShiftDurationSec: data.shiftDurationSec, EndgameDurationSec: data.endgameDurationSec, TimeoutDurationSec: data.timeoutDurationSec});
+const handleV1MatchClock = data => handleMatchTime({MatchState: legacyMatchStateIds[data.state], MatchTimeSec: data.elapsedSec});
 
 // Sends a websocket message to load the specified match.
 const loadMatch = function (matchId) {
@@ -474,42 +503,60 @@ const formatPlayoffAllianceInfo = function (allianceNumber, offFieldTeams) {
   return allianceInfo;
 }
 
+const applyMatchPlayBootstrap = function (data) {
+  handleMatchLoad(legacyMatchPlayMatch(data.match)); handleArenaStatus(legacyMatchPlayArenaStatus(data.arenaStatus));
+  handleAudienceDisplayMode(data.audienceDisplayMode); handleAllianceStationDisplayMode(data.allianceStationDisplayMode);
+  handleEventStatus({CycleTime: data.event.cycleTime, EarlyLateMessage: data.event.earlyLateMessage});
+  handleRealtimeScore(legacyRealtimeScore(data.realtimeScore));
+  handleScorePosted(data.postedScore ? {Match: {LongName: data.postedScore.match.longName}} : {Match: {LongName: ""}});
+  handleScoringStatus(legacyScoringStatus(data.scoringStatus)); handleV1Timing(data.timing); handleV1MatchClock(data.matchClock);
+};
+const loadMatchPlayBootstrap = function () {
+  const requestId = ++bootstrapRequestId; const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 5000);
+  return fetch("/api/v1/admin/match-play/bootstrap", {signal: controller.signal})
+    .then(response => { if (!response.ok) { throw new Error("Unable to load match play bootstrap: " + response.status); } return response.json(); })
+    .then(response => { if (requestId === bootstrapRequestId) { applyMatchPlayBootstrap(response.data); } })
+    .catch(error => console.error(error)).finally(() => clearTimeout(timeout));
+};
+
 $(function () {
   // Activate tooltips above the status headers.
   const tooltipTriggerList = document.querySelectorAll("[data-bs-toggle=tooltip]");
   const tooltipList = [...tooltipTriggerList].map(element => new bootstrap.Tooltip(element));
 
-  // Set up the websocket back to the server.
-  websocket = new CheesyWebsocket("/match_play/websocket", {
+  websocket = new CheesyWebsocket("/match_play/websocket", {});
+  loadMatchPlayBootstrap().finally(function () {
+    stateWebsocket = new CheesyWebsocketV1("/api/v1/streams/admin/match-play", {
     allianceStationDisplayMode: function (event) {
       handleAllianceStationDisplayMode(event.data);
     },
     arenaStatus: function (event) {
-      handleArenaStatus(event.data);
+      handleArenaStatus(legacyMatchPlayArenaStatus(event.data));
     },
     audienceDisplayMode: function (event) {
       handleAudienceDisplayMode(event.data);
     },
     eventStatus: function (event) {
-      handleEventStatus(event.data);
+      handleEventStatus({CycleTime: event.data.cycleTime, EarlyLateMessage: event.data.earlyLateMessage});
     },
-    matchLoad: function (event) {
-      handleMatchLoad(event.data);
+    match: function (event) {
+      handleMatchLoad(legacyMatchPlayMatch(event.data));
     },
-    matchTime: function (event) {
-      handleMatchTime(event.data);
+    matchClock: function (event) {
+      handleV1MatchClock(event.data);
     },
-    matchTiming: function (event) {
-      handleMatchTiming(event.data);
+    timing: function (event) {
+      handleV1Timing(event.data);
     },
     realtimeScore: function (event) {
-      handleRealtimeScore(event.data);
+      handleRealtimeScore(legacyRealtimeScore(event.data));
     },
-    scorePosted: function (event) {
-      handleScorePosted(event.data);
+    postedScore: function (event) {
+      handleScorePosted(event.data ? {Match: {LongName: event.data.match.longName}} : {Match: {LongName: ""}});
     },
     scoringStatus: function (event) {
-      handleScoringStatus(event.data);
+      handleScoringStatus(legacyScoringStatus(event.data));
     },
+    }, loadMatchPlayBootstrap);
   });
 });

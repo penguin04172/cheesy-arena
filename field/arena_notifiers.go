@@ -54,6 +54,32 @@ func (arena *Arena) FieldMonitorInfrastructureStatus() (string, string) {
 	return arena.accessPoint.Status, arena.networkSwitch.Status
 }
 
+type MatchPlayControlStatus struct {
+	MatchState            MatchState
+	CanStartMatch         bool
+	StartMatchConditions  []string
+	AccessPointStatus     string
+	SwitchStatus          string
+	RedSCCStatus          string
+	BlueSCCStatus         string
+	PlcIsHealthy          bool
+	FieldEStop            bool
+	IsFtaReady            bool
+	PlcArmorBlockStatuses map[string]bool
+}
+
+func (arena *Arena) MatchPlayControlStatusSnapshot() MatchPlayControlStatus {
+	conditions := arena.getStartMatchConditions()
+	armorStatuses := arena.Plc.GetArmorBlockStatuses()
+	armorCopy := make(map[string]bool, len(armorStatuses))
+	for name, status := range armorStatuses {
+		armorCopy[name] = status
+	}
+	return MatchPlayControlStatus{arena.MatchState, len(conditions) == 0, append([]string(nil), conditions...),
+		arena.accessPoint.Status, arena.networkSwitch.Status, arena.redSCC.Status, arena.blueSCC.Status,
+		arena.Plc.IsHealthy(), arena.Plc.GetFieldEStop(), arena.Plc.IsFtaReady(), armorCopy}
+}
+
 // Instantiates notifiers and configures their message producing methods.
 func (arena *Arena) configureNotifiers() {
 	arena.AllianceSelectionNotifier = websocket.NewNotifier("allianceSelection", arena.generateAllianceSelectionMessage)
