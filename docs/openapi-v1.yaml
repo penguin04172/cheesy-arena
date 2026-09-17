@@ -768,6 +768,40 @@ paths:
             application/json:
               schema: {$ref: "#/components/schemas/AnnouncerDisplayScoreResponse"}
         "404": {$ref: "#/components/responses/NotFound"}
+  /displays/queueing/bootstrap:
+    get:
+      operationId: getQueueingDisplayBootstrap
+      summary: Get the recovery snapshot and v1 stream URL for the queueing display
+      responses:
+        "200":
+          description: Immutable queueing display snapshot
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/QueueingDisplayBootstrapResponse"}
+  /displays/announcer/bootstrap:
+    get:
+      operationId: getAnnouncerDisplayBootstrap
+      summary: Get the recovery snapshot and v1 stream URL for the announcer display
+      responses:
+        "200":
+          description: Immutable announcer display snapshot
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AnnouncerDisplayBootstrapResponse"}
+  /streams/displays/queueing:
+    get:
+      operationId: streamQueueingDisplay
+      summary: Upgrade to the sequenced queueing display WebSocket v1 stream
+      x-websocket: true
+      responses:
+        "101": {description: WebSocket protocol switched; messages use the v1 stream envelope.}
+  /streams/displays/announcer:
+    get:
+      operationId: streamAnnouncerDisplay
+      summary: Upgrade to the sequenced announcer display WebSocket v1 stream
+      x-websocket: true
+      responses:
+        "101": {description: WebSocket protocol switched; messages use the v1 stream envelope.}
 components:
   securitySchemes:
     sessionCookie:
@@ -1360,6 +1394,49 @@ components:
       properties:
         data: {type: array, items: {$ref: "#/components/schemas/QueueingDisplayMatch"}}
         meta: {$ref: "#/components/schemas/ResponseMeta"}
+    DisplayMatchClock:
+      type: object
+      required: [state, elapsedSec]
+      properties:
+        state: {type: string, enum: [pre_match, start_match, auto, pause, teleop, post_match, timeout_active, post_timeout, unknown]}
+        elapsedSec: {type: integer, minimum: 0}
+    DisplayMatchTiming:
+      type: object
+      required: [autoDurationSec, pauseDurationSec, transitionShiftDurationSec, shiftDurationSec, endgameDurationSec, timeoutDurationSec]
+      properties:
+        autoDurationSec: {type: integer, minimum: 0}
+        pauseDurationSec: {type: integer, minimum: 0}
+        transitionShiftDurationSec: {type: integer, minimum: 0}
+        shiftDurationSec: {type: integer, minimum: 0}
+        endgameDurationSec: {type: integer, minimum: 0}
+        timeoutDurationSec: {type: integer, minimum: 0}
+    DisplayEventStatus:
+      type: object
+      required: [cycleTime, earlyLateMessage]
+      properties:
+        cycleTime: {type: string}
+        earlyLateMessage: {type: string}
+    DisplayRealtimeScore:
+      type: object
+      required: [red, blue]
+      properties:
+        red: {type: integer}
+        blue: {type: integer}
+    QueueingDisplayBootstrap:
+      type: object
+      required: [streamUrl, matches, matchClock, timing, event]
+      properties:
+        streamUrl: {type: string, const: /api/v1/streams/displays/queueing}
+        matches: {type: array, items: {$ref: "#/components/schemas/QueueingDisplayMatch"}}
+        matchClock: {$ref: "#/components/schemas/DisplayMatchClock"}
+        timing: {$ref: "#/components/schemas/DisplayMatchTiming"}
+        event: {$ref: "#/components/schemas/DisplayEventStatus"}
+    QueueingDisplayBootstrapResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/QueueingDisplayBootstrap"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
     AnnouncerDisplayTeam:
       type: object
       required: [id, nickname, schoolName, city, stateProv, country, rookieYear, robotName, accomplishments, rank, isOffField]
@@ -1408,6 +1485,27 @@ components:
         data:
           type: object
           description: Posted match metadata, winner styling, and red/blue score summaries, fouls, cards, and rankings.
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    AnnouncerDisplayBootstrap:
+      type: object
+      required: [streamUrl, match, postedScore, realtimeScore, matchClock, timing, event, audienceDisplayMode]
+      properties:
+        streamUrl: {type: string, const: /api/v1/streams/displays/announcer}
+        match: {$ref: "#/components/schemas/AnnouncerDisplayMatch"}
+        postedScore:
+          anyOf:
+            - {type: object, description: Announcer posted-score DTO.}
+            - {type: "null"}
+        realtimeScore: {$ref: "#/components/schemas/DisplayRealtimeScore"}
+        matchClock: {$ref: "#/components/schemas/DisplayMatchClock"}
+        timing: {$ref: "#/components/schemas/DisplayMatchTiming"}
+        event: {$ref: "#/components/schemas/DisplayEventStatus"}
+        audienceDisplayMode: {type: string}
+    AnnouncerDisplayBootstrapResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/AnnouncerDisplayBootstrap"}
         meta: {$ref: "#/components/schemas/ResponseMeta"}
     GameSettings:
       type: object

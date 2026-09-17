@@ -28,6 +28,7 @@ type Web struct {
 	arena           *field.Arena
 	templateHelpers template.FuncMap
 	apiV1State      *apiV1State
+	apiV1Displays   *apiV1DisplayState
 }
 
 func NewWeb(arena *field.Arena) *Web {
@@ -83,6 +84,7 @@ func NewWeb(arena *field.Arena) *Web {
 		"blueWonMatch":   game.BlueWonMatch.Get,
 		"tieMatch":       game.TieMatch.Get,
 	}
+	web.initializeApiV1DisplayState()
 
 	return web
 }

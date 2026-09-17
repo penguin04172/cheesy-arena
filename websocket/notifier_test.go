@@ -86,6 +86,15 @@ func TestV1NotifierDisconnectsBlockedListener(t *testing.T) {
 	}
 }
 
+func TestNotifierObserverReceivesNotifications(t *testing.T) {
+	notifier := NewNotifier("state", func() any { return "generated" })
+	values := []any{}
+	notifier.Observe(func(value any) { values = append(values, value) })
+	notifier.Notify()
+	notifier.NotifyWithMessage("explicit")
+	assert.Equal(t, []any{"generated", "explicit"}, values)
+}
+
 func TestNotifyMultipleListeners(t *testing.T) {
 	notifier := NewNotifier("testMessageType2", nil)
 	listeners := [50]chan messageEnvelope{}

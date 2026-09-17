@@ -26,10 +26,18 @@ type apiV1QueueingMatch struct {
 }
 
 func (web *Web) apiV1QueueingDisplayMatchesHandler(w http.ResponseWriter, r *http.Request) {
-	snapshot, err := web.buildQueueingDisplayMatchList()
+	items, err := web.buildApiV1QueueingMatches()
 	if err != nil {
 		writeApiV1Error(w, r, http.StatusInternalServerError, "database_error", "Unable to load queueing matches.", nil)
 		return
+	}
+	writeApiV1Data(w, r, http.StatusOK, items, nil)
+}
+
+func (web *Web) buildApiV1QueueingMatches() ([]apiV1QueueingMatch, error) {
+	snapshot, err := web.buildQueueingDisplayMatchList()
+	if err != nil {
+		return nil, err
 	}
 	items := make([]apiV1QueueingMatch, 0, len(snapshot.Matches))
 	for index, match := range snapshot.Matches {
@@ -47,7 +55,7 @@ func (web *Web) apiV1QueueingDisplayMatchesHandler(w http.ResponseWriter, r *htt
 			Blue: apiV1QueueingAlliance{TeamIds: nonzeroTeamIds(match.Blue1, match.Blue2, match.Blue3), OffFieldTeamIds: snapshot.BlueOffFieldTeams[index], PlayoffAllianceId: match.PlayoffBlueAlliance},
 		})
 	}
-	writeApiV1Data(w, r, http.StatusOK, items, nil)
+	return items, nil
 }
 
 func apiV1QueueingPosition(index int) (string, string) {

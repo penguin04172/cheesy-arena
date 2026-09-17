@@ -43,9 +43,17 @@ type apiV1AnnouncerScore struct {
 }
 
 func (web *Web) apiV1AnnouncerDisplayScoreHandler(w http.ResponseWriter, r *http.Request) {
-	if web.arena.SavedMatch == nil || web.arena.SavedMatchResult == nil {
+	response, ok := web.buildApiV1AnnouncerScore()
+	if !ok {
 		writeApiV1Error(w, r, http.StatusNotFound, "score_not_available", "No saved match score is available.", nil)
 		return
+	}
+	writeApiV1Data(w, r, http.StatusOK, response, nil)
+}
+
+func (web *Web) buildApiV1AnnouncerScore() (*apiV1AnnouncerScore, bool) {
+	if web.arena.SavedMatch == nil || web.arena.SavedMatchResult == nil {
+		return nil, false
 	}
 	match, result := web.arena.SavedMatch, web.arena.SavedMatchResult
 	redSummary, blueSummary := result.RedScoreSummary(), result.BlueScoreSummary()
@@ -59,10 +67,10 @@ func (web *Web) apiV1AnnouncerDisplayScoreHandler(w http.ResponseWriter, r *http
 	case game.TieMatch:
 		redRp, blueRp = redRp+1, blueRp+1
 	}
-	response := apiV1AnnouncerScore{MatchId: match.Id, MatchName: match.LongName, MatchType: apiV1MatchType(match.Type), Winner: winner, WinnerClass: winnerClass,
+	response := &apiV1AnnouncerScore{MatchId: match.Id, MatchName: match.LongName, MatchType: apiV1MatchType(match.Type), Winner: winner, WinnerClass: winnerClass,
 		Red:  web.newApiV1AnnouncerScoreAlliance(redSummary, redRp, result.RedScore.Fouls, result.RedCards, []int{match.Red1, match.Red2, match.Red3}),
 		Blue: web.newApiV1AnnouncerScoreAlliance(blueSummary, blueRp, result.BlueScore.Fouls, result.BlueCards, []int{match.Blue1, match.Blue2, match.Blue3})}
-	writeApiV1Data(w, r, http.StatusOK, response, nil)
+	return response, true
 }
 
 func (web *Web) newApiV1AnnouncerScoreAlliance(summary *game.ScoreSummary, rankingPoints int, fouls []game.Foul, cards map[string]string, teamIds []int) apiV1AnnouncerScoreAlliance {

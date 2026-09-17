@@ -19,6 +19,7 @@ type Notifier struct {
 	listeners       map[chan messageEnvelope]bool // True means disconnect the listener when its buffer overflows.
 	mutex           sync.Mutex
 	sequence        uint64
+	observers       []func(any)
 }
 
 type messageEnvelope struct {
@@ -37,16 +38,33 @@ func NewNotifier(messageType string, messageProducer func() any) *Notifier {
 // up any listeners that have closed.
 func (notifier *Notifier) Notify() {
 	notifier.mutex.Lock()
-	defer notifier.mutex.Unlock()
-	notifier.notifyWithMessageLocked(notifier.getMessageBody())
+	messageBody := notifier.getMessageBody()
+	notifier.notifyWithMessageLocked(messageBody)
+	observers := append([]func(any){}, notifier.observers...)
+	notifier.mutex.Unlock()
+	for _, observer := range observers {
+		observer(messageBody)
+	}
 }
 
 // Sends the given message to all registered listeners, and cleans up any listeners that have closed. If there is a
 // messageProducer function defined it is ignored.
 func (notifier *Notifier) NotifyWithMessage(messageBody any) {
 	notifier.mutex.Lock()
-	defer notifier.mutex.Unlock()
 	notifier.notifyWithMessageLocked(messageBody)
+	observers := append([]func(any){}, notifier.observers...)
+	notifier.mutex.Unlock()
+	for _, observer := range observers {
+		observer(messageBody)
+	}
+}
+
+// Observe registers an in-process projection that runs synchronously after listeners have received each notification.
+// It is intended for immutable API DTO caches; observers must not call back into the source notifier.
+func (notifier *Notifier) Observe(observer func(any)) {
+	notifier.mutex.Lock()
+	defer notifier.mutex.Unlock()
+	notifier.observers = append(notifier.observers, observer)
 }
 
 func (notifier *Notifier) notifyWithMessageLocked(messageBody any) {
