@@ -37,6 +37,7 @@ func TestApiV1OpenApiDocument(t *testing.T) {
 		"/streams/admin/alliance-selection",
 		"/streams/admin/match-play",
 		"/streams/admin/scoring/{position}", "/streams/admin/referee",
+		"/streams/admin/field-testing",
 	} {
 		if assert.Contains(t, document.Paths, path) {
 			assert.Contains(t, document.Paths[path], "get")
@@ -58,6 +59,7 @@ func TestApiV1OpenApiDocument(t *testing.T) {
 		"/admin/alliance-selection/bootstrap",
 		"/admin/match-play/bootstrap",
 		"/admin/scoring/{position}/bootstrap", "/admin/referee/bootstrap",
+		"/admin/field-testing/bootstrap",
 	} {
 		assert.Contains(t, document.Paths, path)
 	}

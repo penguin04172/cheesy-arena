@@ -772,6 +772,13 @@ paths:
       security: [{sessionCookie: []}]
       responses:
         "200": {description: Current match, clock, fouls/cards, station bypass, and scoring readiness}
+  /admin/field-testing/bootstrap:
+    get:
+      operationId: getFieldTestingBootstrap
+      summary: Get PLC I/O, match safety state, LED state, and the field-testing stream URL
+      security: [{sessionCookie: []}]
+      responses:
+        "200": {description: Field-testing read-model snapshot}
   /displays/queueing/matches:
     get:
       operationId: listQueueingDisplayMatches
@@ -947,6 +954,14 @@ paths:
     get:
       operationId: streamRefereePanel
       summary: Upgrade to the sequenced referee panel read-model stream
+      security: [{sessionCookie: []}]
+      x-websocket: true
+      responses:
+        "101": {description: WebSocket protocol switched; messages use the v1 stream envelope.}
+  /streams/admin/field-testing:
+    get:
+      operationId: streamFieldTesting
+      summary: Upgrade to the sequenced PLC, match-state, and LED read-model stream
       security: [{sessionCookie: []}]
       x-websocket: true
       responses:

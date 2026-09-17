@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/Team254/cheesy-arena/field"
 	"github.com/Team254/cheesy-arena/game"
+	"github.com/Team254/cheesy-arena/led"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/Team254/cheesy-arena/playoff"
 	"github.com/Team254/cheesy-arena/websocket"
@@ -247,6 +249,30 @@ type apiV1RefereePanelBootstrap struct {
 	Stations      map[string]apiV1AllianceStationStatus `json:"stations"`
 }
 
+type apiV1LedColor struct {
+	R byte `json:"r"`
+	G byte `json:"g"`
+	B byte `json:"b"`
+}
+type apiV1FieldTestingLedStatus struct {
+	Red      [64]apiV1LedColor `json:"red"`
+	Blue     [64]apiV1LedColor `json:"blue"`
+	RedMode  int               `json:"redMode"`
+	BlueMode int               `json:"blueMode"`
+}
+type apiV1FieldTestingPlcIo struct {
+	Inputs        []bool   `json:"inputs"`
+	Registers     []uint16 `json:"registers"`
+	Coils         []bool   `json:"coils"`
+	CoilOverrides []string `json:"coilOverrides"`
+}
+type apiV1FieldTestingBootstrap struct {
+	StreamUrl  string                     `json:"streamUrl"`
+	PlcIo      apiV1FieldTestingPlcIo     `json:"plcIo"`
+	MatchState string                     `json:"matchState"`
+	LedStatus  apiV1FieldTestingLedStatus `json:"ledStatus"`
+}
+
 type apiV1FieldMonitorTeam struct {
 	Id       int     `json:"id"`
 	FtaNotes *string `json:"ftaNotes,omitempty"`
@@ -330,30 +356,34 @@ type apiV1DisplayState struct {
 	matchPlay       apiV1MatchPlayBootstrap
 	scoringPanel    apiV1ScoringPanelBootstrap
 	refereePanel    apiV1RefereePanelBootstrap
+	fieldTesting    apiV1FieldTestingBootstrap
 
-	queueingMatches       *websocket.Notifier
-	announcerMatch        *websocket.Notifier
-	postedScore           *websocket.Notifier
-	realtimeScore         *websocket.Notifier
-	matchClock            *websocket.Notifier
-	timing                *websocket.Notifier
-	eventStatus           *websocket.Notifier
-	audienceMode          *websocket.Notifier
-	reload                *websocket.Notifier
-	displayMatch          *websocket.Notifier
-	audienceRealtime      *websocket.Notifier
-	audiencePosted        *websocket.Notifier
-	allianceSelection     *websocket.Notifier
-	lowerThird            *websocket.Notifier
-	playSound             *websocket.Notifier
-	allianceStationMode   *websocket.Notifier
-	stationStatuses       *websocket.Notifier
-	fieldMonitorStatus    *websocket.Notifier
-	fieldMonitorFtaStatus *websocket.Notifier
-	matchPlayMatch        *websocket.Notifier
-	matchPlayArenaStatus  *websocket.Notifier
-	scoringStatus         *websocket.Notifier
-	controlRealtimeScore  *websocket.Notifier
+	queueingMatches        *websocket.Notifier
+	announcerMatch         *websocket.Notifier
+	postedScore            *websocket.Notifier
+	realtimeScore          *websocket.Notifier
+	matchClock             *websocket.Notifier
+	timing                 *websocket.Notifier
+	eventStatus            *websocket.Notifier
+	audienceMode           *websocket.Notifier
+	reload                 *websocket.Notifier
+	displayMatch           *websocket.Notifier
+	audienceRealtime       *websocket.Notifier
+	audiencePosted         *websocket.Notifier
+	allianceSelection      *websocket.Notifier
+	lowerThird             *websocket.Notifier
+	playSound              *websocket.Notifier
+	allianceStationMode    *websocket.Notifier
+	stationStatuses        *websocket.Notifier
+	fieldMonitorStatus     *websocket.Notifier
+	fieldMonitorFtaStatus  *websocket.Notifier
+	matchPlayMatch         *websocket.Notifier
+	matchPlayArenaStatus   *websocket.Notifier
+	scoringStatus          *websocket.Notifier
+	controlRealtimeScore   *websocket.Notifier
+	fieldTestingPlc        *websocket.Notifier
+	fieldTestingMatchState *websocket.Notifier
+	fieldTestingLed        *websocket.Notifier
 }
 
 func (web *Web) initializeApiV1DisplayState() {
@@ -370,6 +400,7 @@ func (web *Web) initializeApiV1DisplayState() {
 	state.matchPlay.StreamUrl = "/api/v1/streams/admin/match-play"
 	state.scoringPanel.StreamUrl = "/api/v1/streams/admin/scoring"
 	state.refereePanel.StreamUrl = "/api/v1/streams/admin/referee"
+	state.fieldTesting.StreamUrl = "/api/v1/streams/admin/field-testing"
 	web.refreshApiV1DisplayMatches()
 	web.refreshApiV1PostedScore()
 	web.refreshApiV1RealtimeScore()
@@ -382,6 +413,9 @@ func (web *Web) initializeApiV1DisplayState() {
 	web.refreshApiV1FieldMonitorStatus()
 	web.refreshApiV1MatchPlayState()
 	web.refreshApiV1ControlRealtimeScore()
+	web.refreshApiV1FieldTestingPlc()
+	web.refreshApiV1FieldTestingMatchState()
+	web.refreshApiV1FieldTestingLed()
 
 	state.queueingMatches = websocket.NewNotifier("matches", func() any { return web.apiV1QueueingMatchesSnapshot() })
 	state.announcerMatch = websocket.NewNotifier("match", func() any { return web.apiV1AnnouncerMatchSnapshot() })
@@ -406,6 +440,9 @@ func (web *Web) initializeApiV1DisplayState() {
 	state.matchPlayArenaStatus = websocket.NewNotifier("arenaStatus", func() any { return web.apiV1MatchPlayArenaStatusSnapshot() })
 	state.scoringStatus = websocket.NewNotifier("scoringStatus", func() any { return web.apiV1ScoringStatusSnapshot() })
 	state.controlRealtimeScore = websocket.NewNotifier("realtimeScore", func() any { return web.apiV1ControlRealtimeScoreSnapshot() })
+	state.fieldTestingPlc = websocket.NewNotifier("plcIo", func() any { return web.apiV1FieldTestingPlcSnapshot() })
+	state.fieldTestingMatchState = websocket.NewNotifier("matchState", func() any { return web.apiV1FieldTestingMatchStateSnapshot() })
+	state.fieldTestingLed = websocket.NewNotifier("ledStatus", func() any { return web.apiV1FieldTestingLedSnapshot() })
 
 	web.arena.MatchLoadNotifier.Observe(func(any) {
 		web.refreshApiV1DisplayMatches()
@@ -446,8 +483,13 @@ func (web *Web) initializeApiV1DisplayState() {
 		state.fieldMonitorFtaStatus.Notify()
 		web.refreshApiV1MatchPlayArenaStatus()
 		state.matchPlayArenaStatus.Notify()
+		web.refreshApiV1FieldTestingMatchState()
+		state.fieldTestingMatchState.Notify()
 	})
 	web.arena.ScoringStatusNotifier.Observe(func(any) { web.refreshApiV1ScoringStatus(); state.scoringStatus.Notify() })
+	if plcNotifier := web.arena.Plc.IoChangeNotifier(); plcNotifier != nil {
+		plcNotifier.Observe(func(any) { web.refreshApiV1FieldTestingPlc(); state.fieldTestingPlc.Notify() })
+	}
 	web.arena.ReloadDisplaysNotifier.Observe(func(value any) { state.reload.NotifyWithMessage(value) })
 }
 
@@ -810,6 +852,35 @@ func (web *Web) refreshApiV1ControlRealtimeScore() {
 	web.apiV1Displays.mu.Unlock()
 }
 
+func (web *Web) refreshApiV1FieldTestingPlc() {
+	snapshot := web.arena.Plc.IoSnapshot()
+	value := apiV1FieldTestingPlcIo{snapshot.Inputs, snapshot.Registers, snapshot.Coils, snapshot.CoilOverrides}
+	web.apiV1Displays.mu.Lock()
+	web.apiV1Displays.fieldTesting.PlcIo = value
+	web.apiV1Displays.mu.Unlock()
+}
+func (web *Web) refreshApiV1FieldTestingMatchState() {
+	value := apiV1MatchState(web.arena.MatchState)
+	web.apiV1Displays.mu.Lock()
+	web.apiV1Displays.fieldTesting.MatchState = value
+	web.apiV1Displays.mu.Unlock()
+}
+func (web *Web) refreshApiV1FieldTestingLed() {
+	red, blue := web.arena.Leds.GetPixels()
+	redMode, blueMode := web.arena.Leds.GetModes()
+	value := apiV1FieldTestingLedStatus{RedMode: int(redMode), BlueMode: int(blueMode)}
+	copyColors := func(source [64]led.Color, destination *[64]apiV1LedColor) {
+		for index, color := range source {
+			destination[index] = apiV1LedColor{color.R, color.G, color.B}
+		}
+	}
+	copyColors(red, &value.Red)
+	copyColors(blue, &value.Blue)
+	web.apiV1Displays.mu.Lock()
+	web.apiV1Displays.fieldTesting.LedStatus = value
+	web.apiV1Displays.mu.Unlock()
+}
+
 func (web *Web) buildApiV1FieldMonitorStatus(includeFtaNotes bool) apiV1FieldMonitorStatus {
 	accessPointStatus, switchStatus := web.arena.FieldMonitorInfrastructureStatus()
 	value := apiV1FieldMonitorStatus{AccessPointStatus: accessPointStatus, SwitchStatus: switchStatus, Stations: make(map[string]apiV1FieldMonitorStation, 6)}
@@ -939,6 +1010,21 @@ func (web *Web) apiV1ControlRealtimeScoreSnapshot() any {
 	defer web.apiV1Displays.mu.RUnlock()
 	return web.apiV1Displays.scoringPanel.RealtimeScore
 }
+func (web *Web) apiV1FieldTestingPlcSnapshot() any {
+	web.apiV1Displays.mu.RLock()
+	defer web.apiV1Displays.mu.RUnlock()
+	return web.apiV1Displays.fieldTesting.PlcIo
+}
+func (web *Web) apiV1FieldTestingMatchStateSnapshot() any {
+	web.apiV1Displays.mu.RLock()
+	defer web.apiV1Displays.mu.RUnlock()
+	return web.apiV1Displays.fieldTesting.MatchState
+}
+func (web *Web) apiV1FieldTestingLedSnapshot() any {
+	web.apiV1Displays.mu.RLock()
+	defer web.apiV1Displays.mu.RUnlock()
+	return web.apiV1Displays.fieldTesting.LedStatus
+}
 
 func (web *Web) apiV1QueueingBootstrapHandler(w http.ResponseWriter, r *http.Request) {
 	web.apiV1Displays.mu.RLock()
@@ -1010,6 +1096,14 @@ func (web *Web) apiV1RefereePanelBootstrapHandler(w http.ResponseWriter, r *http
 	web.apiV1Displays.mu.RLock()
 	defer web.apiV1Displays.mu.RUnlock()
 	writeApiV1Data(w, r, http.StatusOK, web.apiV1Displays.refereePanel, nil)
+}
+func (web *Web) apiV1FieldTestingBootstrapHandler(w http.ResponseWriter, r *http.Request) {
+	web.refreshApiV1FieldTestingPlc()
+	web.refreshApiV1FieldTestingMatchState()
+	web.refreshApiV1FieldTestingLed()
+	web.apiV1Displays.mu.RLock()
+	defer web.apiV1Displays.mu.RUnlock()
+	writeApiV1Data(w, r, http.StatusOK, web.apiV1Displays.fieldTesting, nil)
 }
 func (web *Web) apiV1FieldMonitorFtaBootstrapHandler(w http.ResponseWriter, r *http.Request) {
 	web.apiV1Displays.mu.RLock()
@@ -1183,6 +1277,32 @@ func (web *Web) apiV1RefereePanelStreamHandler(w http.ResponseWriter, r *http.Re
 	}
 	defer ws.Close()
 	ws.HandleNotifiersV1(web.apiV1Displays.displayMatch, web.apiV1Displays.matchClock, web.apiV1Displays.controlRealtimeScore, web.apiV1Displays.scoringStatus, web.apiV1Displays.stationStatuses)
+}
+func (web *Web) apiV1FieldTestingStreamHandler(w http.ResponseWriter, r *http.Request) {
+	if !web.userIsAdmin(w, r) {
+		return
+	}
+	ws, err := websocket.NewWebsocket(w, r)
+	if err != nil {
+		return
+	}
+	defer ws.Close()
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				web.refreshApiV1FieldTestingLed()
+				web.apiV1Displays.fieldTestingLed.Notify()
+			case <-done:
+				return
+			}
+		}
+	}()
+	ws.HandleNotifiersV1(web.apiV1Displays.fieldTestingPlc, web.apiV1Displays.fieldTestingMatchState, web.apiV1Displays.fieldTestingLed)
 }
 
 func apiV1MatchState(state field.MatchState) string {

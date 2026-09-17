@@ -19,6 +19,7 @@ type Plc interface {
 	IsEnabled() bool
 	IsHealthy() bool
 	IoChangeNotifier() *websocket.Notifier
+	IoSnapshot() PlcIoSnapshot
 	Run()
 	GetArmorBlockStatuses() map[string]bool
 	GetFieldEStop() bool
@@ -40,6 +41,13 @@ type Plc interface {
 	GetCoilNames() []string
 	SetCoilOverride(index int, state bool)
 	ClearCoilOverride(index int)
+}
+
+type PlcIoSnapshot struct {
+	Inputs        []bool
+	Registers     []uint16
+	Coils         []bool
+	CoilOverrides []string
 }
 
 type ModbusPlc struct {
@@ -182,6 +190,12 @@ func (plc *ModbusPlc) IsHealthy() bool {
 // Returns a notifier which fires whenever the I/O values change.
 func (plc *ModbusPlc) IoChangeNotifier() *websocket.Notifier {
 	return plc.ioChangeNotifier
+}
+
+func (plc *ModbusPlc) IoSnapshot() PlcIoSnapshot {
+	effectiveCoils := plc.getEffectiveCoils()
+	overrides := plc.getCoilOverrideStates()
+	return PlcIoSnapshot{append([]bool(nil), plc.inputs[:]...), append([]uint16(nil), plc.registers[:]...), append([]bool(nil), effectiveCoils[:]...), append([]string(nil), overrides[:]...)}
 }
 
 // Loops indefinitely to read inputs from and write outputs to PLC.
@@ -483,14 +497,7 @@ func (plc *ModbusPlc) writeCoils() bool {
 }
 
 func (plc *ModbusPlc) generateIoChangeMessage() any {
-	effectiveCoils := plc.getEffectiveCoils()
-	coilOverrideStates := plc.getCoilOverrideStates()
-	return &struct {
-		Inputs        []bool
-		Registers     []uint16
-		Coils         []bool
-		CoilOverrides []string
-	}{plc.inputs[:], plc.registers[:], effectiveCoils[:], coilOverrideStates[:]}
+	return plc.IoSnapshot()
 }
 
 func (plc *ModbusPlc) getEffectiveCoils() [coilCount]bool {

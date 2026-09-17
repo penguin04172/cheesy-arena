@@ -330,6 +330,47 @@ func TestScoringAndRefereeClientsSplitStateAndCommands(t *testing.T) {
 	}
 }
 
+func TestApiV1FieldTestingBootstrapAndStream(t *testing.T) {
+	web := setupTestWeb(t)
+	response := web.getHttpResponse("/api/v1/admin/field-testing/bootstrap")
+	require.Equal(t, http.StatusOK, response.Code)
+	var body struct {
+		Data apiV1FieldTestingBootstrap `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &body))
+	assert.Equal(t, "/api/v1/streams/admin/field-testing", body.Data.StreamUrl)
+	assert.Equal(t, "pre_match", body.Data.MatchState)
+	assert.Len(t, body.Data.LedStatus.Red, 64)
+
+	server, wsUrl := web.startTestServer()
+	defer server.Close()
+	conn, _, err := gorillawebsocket.DefaultDialer.Dial(wsUrl+"/api/v1/streams/admin/field-testing", nil)
+	require.NoError(t, err)
+	defer conn.Close()
+	for _, expected := range []string{"plcIo", "matchState", "ledStatus"} {
+		var message cawebsocket.V1Message
+		require.NoError(t, conn.ReadJSON(&message))
+		assert.Equal(t, expected, message.Type)
+		assert.True(t, message.Meta.Bootstrap)
+	}
+	var ready cawebsocket.V1Message
+	require.NoError(t, conn.ReadJSON(&ready))
+	assert.Equal(t, "ready", ready.Type)
+	var update cawebsocket.V1Message
+	require.NoError(t, conn.ReadJSON(&update))
+	assert.Equal(t, "ledStatus", update.Type)
+	assert.False(t, update.Meta.Bootstrap)
+}
+
+func TestFieldTestingClientSplitsStateAndCommands(t *testing.T) {
+	contents, err := os.ReadFile("../static/js/setup_field_testing.js")
+	require.NoError(t, err)
+	source := string(contents)
+	assert.Contains(t, source, "new CheesyWebsocketV1")
+	assert.Contains(t, source, "new CheesyWebsocket(\"/setup/field_testing/websocket\", {})")
+	assert.Contains(t, source, "/api/v1/admin/field-testing/bootstrap")
+}
+
 func TestApiV1QueueingStreamBootstrapReadyAndUpdate(t *testing.T) {
 	web := setupTestWeb(t)
 	server, wsUrl := web.startTestServer()

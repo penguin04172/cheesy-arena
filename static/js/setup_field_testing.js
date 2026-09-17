@@ -4,10 +4,15 @@
 // Client-side logic for the Field Testing page.
 
 var websocket;
+var stateWebsocket;
+var bootstrapRequestId = 0;
 var plcOverrideAllowed = false;
 var allowedOverrideMatchStates = [0, 5, 6, 7];
 var disabledOverrideTooltipText = "Cannot override coil while match is in progress.";
 var disabledLedTooltipText = "Cannot override LED Lighting while match is in progress.";
+var legacyMatchStateIds = {pre_match: 0, start_match: 1, auto: 2, pause: 3, teleop: 4, post_match: 5, timeout_active: 6, post_timeout: 7};
+var legacyPlcIo = data => ({Inputs: data.Inputs || data.inputs, Registers: data.Registers || data.registers, Coils: data.Coils || data.coils, CoilOverrides: data.CoilOverrides || data.coilOverrides});
+var legacyLedStatus = data => ({Red: data.red.map(color => ({R: color.r, G: color.g, B: color.b})), Blue: data.blue.map(color => ({R: color.r, G: color.g, B: color.b})), RedMode: data.redMode, BlueMode: data.blueMode});
 
 // Sends a websocket message to play a given game sound on the audience display.
 var playSound = function (sound) {
@@ -144,6 +149,17 @@ var handleLedStatus = function (data) {
   syncModeSelect("blue", data.BlueMode);
 };
 
+var applyFieldTestingBootstrap = function (data) {
+  handlePlcIoChange(legacyPlcIo(data.plcIo)); handleArenaStatus({MatchState: legacyMatchStateIds[data.matchState]}); handleLedStatus(legacyLedStatus(data.ledStatus));
+};
+var loadFieldTestingBootstrap = function () {
+  var requestId = ++bootstrapRequestId; var controller = new AbortController(); var timeout = setTimeout(() => controller.abort(), 5000);
+  return fetch("/api/v1/admin/field-testing/bootstrap", {signal: controller.signal})
+    .then(response => { if (!response.ok) { throw new Error("Unable to load field testing bootstrap: " + response.status); } return response.json(); })
+    .then(response => { if (requestId === bootstrapRequestId) { applyFieldTestingBootstrap(response.data); } })
+    .catch(error => console.error(error)).finally(() => clearTimeout(timeout));
+};
+
 $(function () {
   modeSelects["red"] = $("select[name=redLedMode]");
   modeSelects["blue"] = $("select[name=blueLedMode]");
@@ -161,16 +177,18 @@ $(function () {
     setPlcCoilOverride(parseInt($(event.currentTarget).attr("data-coil-index"), 10), nextOverrideState);
   });
 
-  // Set up the websocket back to the server.
-  websocket = new CheesyWebsocket("/setup/field_testing/websocket", {
-    plcIoChange: function (event) {
-      handlePlcIoChange(event.data);
+  websocket = new CheesyWebsocket("/setup/field_testing/websocket", {});
+  loadFieldTestingBootstrap().finally(function () {
+    stateWebsocket = new CheesyWebsocketV1("/api/v1/streams/admin/field-testing", {
+    plcIo: function (event) {
+      handlePlcIoChange(legacyPlcIo(event.data));
     },
-    arenaStatus: function (event) {
-      handleArenaStatus(event.data);
+    matchState: function (event) {
+      handleArenaStatus({MatchState: legacyMatchStateIds[event.data]});
     },
     ledStatus: function (event) {
-      handleLedStatus(event.data);
+      handleLedStatus(legacyLedStatus(event.data));
     }
+    }, loadFieldTestingBootstrap);
   });
 });

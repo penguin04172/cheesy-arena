@@ -6,6 +6,7 @@
 package field
 
 import (
+	caplc "github.com/Team254/cheesy-arena/plc"
 	"github.com/Team254/cheesy-arena/websocket"
 )
 
@@ -46,6 +47,8 @@ func (plc *FakePlc) IsHealthy() bool {
 func (plc *FakePlc) IoChangeNotifier() *websocket.Notifier {
 	return nil
 }
+
+func (plc *FakePlc) IoSnapshot() caplc.PlcIoSnapshot { return caplc.PlcIoSnapshot{} }
 
 func (plc *FakePlc) Run() {
 }
