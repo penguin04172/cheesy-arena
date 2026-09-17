@@ -9,6 +9,7 @@ if (typeof DisplayShared === "undefined") {
 }
 
 var websocket;
+let bootstrapRequestId = 0;
 let transitionMap;
 const transitionQueue = [];
 let transitionInProgress = false;
@@ -24,6 +25,57 @@ const hubActiveController = DisplayShared.createHubActiveController(function () 
 const allianceSelectionTemplate = Handlebars.compile($("#allianceSelectionTemplate").html());
 const sponsorImageTemplate = Handlebars.compile($("#sponsorImageTemplate").html());
 const sponsorTextTemplate = Handlebars.compile($("#sponsorTextTemplate").html());
+
+const legacyMatchStateIds = {pre_match: 0, start_match: 1, auto: 2, pause: 3, teleop: 4, post_match: 5, timeout_active: 6, post_timeout: 7};
+const legacyMatchType = function (type) {
+  if (type === "qualification") { return matchTypeQualification; }
+  if (type === "playoff") { return matchTypePlayoff; }
+  return type === "practice" ? 1 : 0;
+};
+const legacyScoreSummary = function (summary) {
+  const result = {};
+  Object.keys(summary || {}).forEach(key => { result[key.charAt(0).toUpperCase() + key.slice(1)] = summary[key]; });
+  return result;
+};
+const legacyMatch = function (data) {
+  const teams = {};
+  Object.keys(data.teams || {}).forEach(station => {
+    const team = data.teams[station];
+    teams[station] = team ? {Id: team.id, Nickname: team.nickname, YellowCard: team.yellowCard} : null;
+  });
+  return {
+    Match: {Id: data.id, Type: legacyMatchType(data.type), LongName: data.longName, NameDetail: data.nameDetail,
+      PlayoffRedAlliance: data.playoffRedAlliance, PlayoffBlueAlliance: data.playoffBlueAlliance,
+      Red1: data.red[0], Red2: data.red[1], Red3: data.red[2], Blue1: data.blue[0], Blue2: data.blue[1], Blue3: data.blue[2]},
+    Teams: teams, Rankings: data.rankings || {},
+    Matchup: data.series ? {NumWinsToAdvance: data.series.numWinsToAdvance, RedAllianceWins: data.series.redAllianceWins, BlueAllianceWins: data.series.blueAllianceWins} : null,
+    RedOffFieldTeams: (data.redOffFieldTeams || []).map(team => ({Id: team.id, Nickname: team.nickname})),
+    BlueOffFieldTeams: (data.blueOffFieldTeams || []).map(team => ({Id: team.id, Nickname: team.nickname})),
+    BreakDescription: data.breakDescription, BreakNextMatchName: data.breakNextMatchName,
+  };
+};
+const legacyRealtimeScore = data => ({
+  Red: {ScoreSummary: legacyScoreSummary(data.red.summary), ActiveRemainingSec: data.red.activeRemainingSec, ActiveDurationSec: data.red.activeDurationSec},
+  Blue: {ScoreSummary: legacyScoreSummary(data.blue.summary), ActiveRemainingSec: data.blue.activeRemainingSec, ActiveDurationSec: data.blue.activeDurationSec},
+});
+const legacyPostedScore = function (data) {
+  const match = legacyMatch(data.match).Match;
+  const rankings = values => Object.fromEntries(Object.entries(values || {}).map(([id, ranking]) => [id, ranking ? {Rank: ranking.rank, PreviousRank: ranking.previousRank} : null]));
+  return {Match: match, RedScoreSummary: legacyScoreSummary(data.red.summary), BlueScoreSummary: legacyScoreSummary(data.blue.summary),
+    RedRankingPoints: data.red.rankingPoints, BlueRankingPoints: data.blue.rankingPoints,
+    RedCards: data.red.cards, BlueCards: data.blue.cards, RedRankings: rankings(data.red.rankings), BlueRankings: rankings(data.blue.rankings),
+    RedOffFieldTeamIds: data.red.offFieldTeamIds, BlueOffFieldTeamIds: data.blue.offFieldTeamIds,
+    RedWon: data.red.won, BlueWon: data.blue.won, TiebreakReason: data.tiebreakReason,
+    RedWins: data.red.wins, BlueWins: data.blue.wins, RedDestination: data.red.destination, BlueDestination: data.blue.destination};
+};
+const legacyAllianceSelection = data => ({Alliances: (data.alliances || []).map(item => ({Id: item.id, TeamIds: item.teamIds})),
+  ShowTimer: data.showTimer, TimeRemainingSec: data.timeRemainingSec,
+  RankedTeams: (data.rankedTeams || []).map(item => ({Rank: item.rank, TeamId: item.teamId, Picked: item.picked}))});
+const legacyLowerThird = data => ({LowerThird: {TopText: data.topText, BottomText: data.bottomText}, ShowLowerThird: data.showLowerThird});
+const handleV1Timing = data => handleMatchTiming({AutoDurationSec: data.autoDurationSec, PauseDurationSec: data.pauseDurationSec,
+  TransitionShiftDurationSec: data.transitionShiftDurationSec, ShiftDurationSec: data.shiftDurationSec,
+  EndgameDurationSec: data.endgameDurationSec, TimeoutDurationSec: data.timeoutDurationSec});
+const handleV1MatchClock = data => handleMatchTime({MatchState: legacyMatchStateIds[data.state], MatchTimeSec: data.elapsedSec});
 
 // Constants for overlay positioning. The CSS is the source of truth for the values that represent initial state.
 const overlayCenteringTopUp = "-130px";
@@ -722,6 +774,26 @@ const setTeamInfo = function (side, position, teamId, cards, rankings) {
   rankNumberElement.toggle(teamId > 0);
 };
 
+const applyAudienceBootstrap = function (data) {
+  handleMatchLoad(legacyMatch(data.match));
+  handleRealtimeScore(legacyRealtimeScore(data.realtimeScore));
+  handleV1Timing(data.timing);
+  handleV1MatchClock(data.matchClock);
+  handleAllianceSelection(legacyAllianceSelection(data.allianceSelection));
+  handleLowerThird(legacyLowerThird(data.lowerThird));
+  handleAudienceDisplayMode(data.displayMode);
+};
+
+const loadAudienceBootstrap = function () {
+  const requestId = ++bootstrapRequestId;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  return fetch("/api/v1/displays/audience/bootstrap", {signal: controller.signal})
+    .then(response => { if (!response.ok) { throw new Error("Unable to load audience bootstrap: " + response.status); } return response.json(); })
+    .then(response => { if (requestId === bootstrapRequestId) { applyAudienceBootstrap(response.data); } })
+    .catch(error => console.error(error)).finally(() => clearTimeout(timeout));
+};
+
 $(function () {
   // Read the configuration for this display from the URL query string.
   const urlParams = new URLSearchParams(window.location.search);
@@ -738,35 +810,37 @@ $(function () {
     overlayCenteringShowParams = overlayCenteringBottomShowParams;
   }
 
-  // Set up the websocket back to the server.
-  websocket = new CheesyWebsocket("/displays/audience/websocket", {
+  // Load a coherent snapshot before subscribing to sequenced updates.
+  loadAudienceBootstrap().finally(function () {
+    websocket = new CheesyWebsocketV1("/api/v1/streams/displays/audience", {
     allianceSelection: function (event) {
-      handleAllianceSelection(event.data);
+      handleAllianceSelection(legacyAllianceSelection(event.data));
     },
     audienceDisplayMode: function (event) {
       handleAudienceDisplayMode(event.data);
     },
     lowerThird: function (event) {
-      handleLowerThird(event.data);
+      handleLowerThird(legacyLowerThird(event.data));
     },
-    matchLoad: function (event) {
-      handleMatchLoad(event.data);
+    match: function (event) {
+      handleMatchLoad(legacyMatch(event.data));
     },
-    matchTime: function (event) {
-      handleMatchTime(event.data);
+    matchClock: function (event) {
+      handleV1MatchClock(event.data);
     },
-    matchTiming: function (event) {
-      handleMatchTiming(event.data);
+    timing: function (event) {
+      handleV1Timing(event.data);
     },
     playSound: function (event) {
       handlePlaySound(event.data);
     },
     realtimeScore: function (event) {
-      handleRealtimeScore(event.data);
+      handleRealtimeScore(legacyRealtimeScore(event.data));
     },
-    scorePosted: function (event) {
-      handleScorePosted(event.data);
+    postedScore: function (event) {
+      if (!event.meta.bootstrap && event.data !== null) { handleScorePosted(legacyPostedScore(event.data)); }
     },
+    }, loadAudienceBootstrap);
   });
 
   // Map how to transition from one screen to another. Missing links between screens indicate that first we

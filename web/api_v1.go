@@ -110,8 +110,12 @@ func (web *Web) registerApiV1Routes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/displays/announcer/score", web.apiV1Middleware(http.HandlerFunc(web.apiV1AnnouncerDisplayScoreHandler)))
 	mux.Handle("GET /api/v1/displays/queueing/bootstrap", web.apiV1Middleware(http.HandlerFunc(web.apiV1QueueingBootstrapHandler)))
 	mux.Handle("GET /api/v1/displays/announcer/bootstrap", web.apiV1Middleware(http.HandlerFunc(web.apiV1AnnouncerBootstrapHandler)))
+	mux.Handle("GET /api/v1/displays/audience/bootstrap", web.apiV1Middleware(http.HandlerFunc(web.apiV1AudienceBootstrapHandler)))
+	mux.Handle("GET /api/v1/displays/alliance-station/bootstrap", web.apiV1Middleware(http.HandlerFunc(web.apiV1AllianceStationBootstrapHandler)))
 	mux.HandleFunc("GET /api/v1/streams/displays/queueing", web.apiV1QueueingStreamHandler)
 	mux.HandleFunc("GET /api/v1/streams/displays/announcer", web.apiV1AnnouncerStreamHandler)
+	mux.HandleFunc("GET /api/v1/streams/displays/audience", web.apiV1AudienceStreamHandler)
+	mux.HandleFunc("GET /api/v1/streams/displays/alliance-station", web.apiV1AllianceStationStreamHandler)
 }
 
 func (web *Web) apiV1AdminRead(next http.Handler) http.Handler {

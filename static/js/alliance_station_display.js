@@ -7,6 +7,35 @@ var station = "";
 var blinkInterval;
 var currentScreen = "blank";
 var websocket;
+var bootstrapRequestId = 0;
+
+var legacyMatchStateIds = {pre_match: 0, start_match: 1, auto: 2, pause: 3, teleop: 4, post_match: 5, timeout_active: 6, post_timeout: 7};
+var legacyMatchType = function (type) {
+  if (type === "qualification") { return matchTypeQualification; }
+  if (type === "playoff") { return matchTypePlayoff; }
+  return type === "practice" ? 1 : 0;
+};
+var legacyMatch = function (data) {
+  var teams = {};
+  Object.keys(data.teams || {}).forEach(function (key) {
+    var team = data.teams[key]; teams[key] = team ? {Id: team.id, Nickname: team.nickname} : null;
+  });
+  return {Match: {Type: legacyMatchType(data.type), PlayoffRedAlliance: data.playoffRedAlliance, PlayoffBlueAlliance: data.playoffBlueAlliance},
+    Teams: teams, Rankings: data.rankings || {},
+    RedOffFieldTeams: (data.redOffFieldTeams || []).map(function (team) { return {Id: team.id}; }),
+    BlueOffFieldTeams: (data.blueOffFieldTeams || []).map(function (team) { return {Id: team.id}; })};
+};
+var legacyStationStatuses = function (stations) {
+  var result = {AllianceStations: {}};
+  Object.keys(stations || {}).forEach(function (key) {
+    var item = stations[key]; result.AllianceStations[key] = {Bypass: item.bypass, DsConn: {DsLinked: item.dsLinked, RobotLinked: item.robotLinked}};
+  });
+  return result;
+};
+var handleV1Timing = function (data) { handleMatchTiming({AutoDurationSec: data.autoDurationSec, PauseDurationSec: data.pauseDurationSec,
+  TransitionShiftDurationSec: data.transitionShiftDurationSec, ShiftDurationSec: data.shiftDurationSec,
+  EndgameDurationSec: data.endgameDurationSec, TimeoutDurationSec: data.timeoutDurationSec}); };
+var handleV1MatchClock = function (data) { handleMatchTime({MatchState: legacyMatchStateIds[data.state], MatchTimeSec: data.elapsedSec}); };
 
 // Handles a websocket message to change which screen is displayed.
 var handleAllianceStationDisplayMode = function (targetScreen) {
@@ -120,12 +149,22 @@ var handleMatchTime = function (data) {
 
 // Handles a websocket message to update the match score.
 var handleRealtimeScore = function (data) {
-  $("#redScore").text(
-    data.Red.ScoreSummary.Score - data.Red.ScoreSummary.PostMatchPoints
-  );
-  $("#blueScore").text(
-    data.Blue.ScoreSummary.Score - data.Blue.ScoreSummary.PostMatchPoints
-  );
+  $("#redScore").text(data.red);
+  $("#blueScore").text(data.blue);
+};
+
+var applyAllianceStationBootstrap = function (data) {
+  handleMatchLoad(legacyMatch(data.match)); handleRealtimeScore(data.realtimeScore); handleV1Timing(data.timing);
+  handleV1MatchClock(data.matchClock); handleAllianceStationDisplayMode(data.displayMode); handleArenaStatus(legacyStationStatuses(data.stations));
+};
+
+var loadAllianceStationBootstrap = function () {
+  var requestId = ++bootstrapRequestId;
+  var controller = new AbortController(); var timeout = setTimeout(function () { controller.abort(); }, 5000);
+  return fetch("/api/v1/displays/alliance-station/bootstrap", {signal: controller.signal})
+    .then(function (response) { if (!response.ok) { throw new Error("Unable to load alliance station bootstrap: " + response.status); } return response.json(); })
+    .then(function (response) { if (requestId === bootstrapRequestId) { applyAllianceStationBootstrap(response.data); } })
+    .catch(function (error) { console.error(error); }).finally(function () { clearTimeout(timeout); });
 };
 
 $(function () {
@@ -133,25 +172,26 @@ $(function () {
   var urlParams = new URLSearchParams(window.location.search);
   station = urlParams.get("station");
 
-  // Set up the websocket back to the server.
-  websocket = new CheesyWebsocket("/displays/alliance_station/websocket", {
+  loadAllianceStationBootstrap().finally(function () {
+    websocket = new CheesyWebsocketV1("/api/v1/streams/displays/alliance-station", {
     allianceStationDisplayMode: function (event) {
       handleAllianceStationDisplayMode(event.data);
     },
-    arenaStatus: function (event) {
-      handleArenaStatus(event.data);
+    stationStatuses: function (event) {
+      handleArenaStatus(legacyStationStatuses(event.data));
     },
-    matchLoad: function (event) {
-      handleMatchLoad(event.data);
+    match: function (event) {
+      handleMatchLoad(legacyMatch(event.data));
     },
-    matchTime: function (event) {
-      handleMatchTime(event.data);
+    matchClock: function (event) {
+      handleV1MatchClock(event.data);
     },
-    matchTiming: function (event) {
-      handleMatchTiming(event.data);
+    timing: function (event) {
+      handleV1Timing(event.data);
     },
     realtimeScore: function (event) {
       handleRealtimeScore(event.data);
     }
+    }, loadAllianceStationBootstrap);
   });
 });

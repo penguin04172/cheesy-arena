@@ -788,6 +788,26 @@ paths:
           content:
             application/json:
               schema: {$ref: "#/components/schemas/AnnouncerDisplayBootstrapResponse"}
+  /displays/audience/bootstrap:
+    get:
+      operationId: getAudienceDisplayBootstrap
+      summary: Get the recovery snapshot and v1 stream URL for the audience display
+      responses:
+        "200":
+          description: Immutable audience display snapshot
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AudienceDisplayBootstrapResponse"}
+  /displays/alliance-station/bootstrap:
+    get:
+      operationId: getAllianceStationDisplayBootstrap
+      summary: Get the recovery snapshot and v1 stream URL for an alliance station display
+      responses:
+        "200":
+          description: Immutable alliance station display snapshot
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AllianceStationDisplayBootstrapResponse"}
   /streams/displays/queueing:
     get:
       operationId: streamQueueingDisplay
@@ -799,6 +819,20 @@ paths:
     get:
       operationId: streamAnnouncerDisplay
       summary: Upgrade to the sequenced announcer display WebSocket v1 stream
+      x-websocket: true
+      responses:
+        "101": {description: WebSocket protocol switched; messages use the v1 stream envelope.}
+  /streams/displays/audience:
+    get:
+      operationId: streamAudienceDisplay
+      summary: Upgrade to the sequenced audience display WebSocket v1 stream
+      x-websocket: true
+      responses:
+        "101": {description: WebSocket protocol switched; messages use the v1 stream envelope.}
+  /streams/displays/alliance-station:
+    get:
+      operationId: streamAllianceStationDisplay
+      summary: Upgrade to the sequenced alliance station display WebSocket v1 stream
       x-websocket: true
       responses:
         "101": {description: WebSocket protocol switched; messages use the v1 stream envelope.}
@@ -1506,6 +1540,50 @@ components:
       required: [data, meta]
       properties:
         data: {$ref: "#/components/schemas/AnnouncerDisplayBootstrap"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    AudienceDisplayBootstrap:
+      type: object
+      required: [streamUrl, match, postedScore, realtimeScore, matchClock, timing, displayMode, allianceSelection, lowerThird]
+      properties:
+        streamUrl: {type: string, const: /api/v1/streams/displays/audience}
+        match: {type: object, description: Public current-match, team, ranking, series, and break presentation DTO.}
+        postedScore: {type: [object, "null"], description: Public final-score presentation DTO.}
+        realtimeScore: {type: object, description: Red and blue public score summaries and hub-active timers.}
+        matchClock: {$ref: "#/components/schemas/DisplayMatchClock"}
+        timing: {$ref: "#/components/schemas/DisplayMatchTiming"}
+        displayMode: {type: string}
+        allianceSelection: {type: object, description: Alliance selection rows, rankings, and timer.}
+        lowerThird: {type: object, description: Current lower-third text and visibility.}
+    AudienceDisplayBootstrapResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/AudienceDisplayBootstrap"}
+        meta: {$ref: "#/components/schemas/ResponseMeta"}
+    AllianceStationDisplayBootstrap:
+      type: object
+      required: [streamUrl, match, realtimeScore, matchClock, timing, displayMode, stations]
+      properties:
+        streamUrl: {type: string, const: /api/v1/streams/displays/alliance-station}
+        match: {type: object, description: Public current-match and team presentation DTO.}
+        realtimeScore: {$ref: "#/components/schemas/DisplayRealtimeScore"}
+        matchClock: {$ref: "#/components/schemas/DisplayMatchClock"}
+        timing: {$ref: "#/components/schemas/DisplayMatchTiming"}
+        displayMode: {type: string}
+        stations:
+          type: object
+          additionalProperties:
+            type: object
+            required: [bypass, dsLinked, robotLinked]
+            properties:
+              bypass: {type: boolean}
+              dsLinked: {type: boolean}
+              robotLinked: {type: boolean}
+    AllianceStationDisplayBootstrapResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: {$ref: "#/components/schemas/AllianceStationDisplayBootstrap"}
         meta: {$ref: "#/components/schemas/ResponseMeta"}
     GameSettings:
       type: object

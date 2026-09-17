@@ -44,6 +44,11 @@ type audienceAllianceScoreFields struct {
 	ActiveDurationSec  int
 }
 
+// DisplayBreakDetails returns the text shown by audience displays during a scheduled break.
+func (arena *Arena) DisplayBreakDetails() (string, string) {
+	return arena.breakDescription, arena.breakNextMatchName
+}
+
 // Instantiates notifiers and configures their message producing methods.
 func (arena *Arena) configureNotifiers() {
 	arena.AllianceSelectionNotifier = websocket.NewNotifier("allianceSelection", arena.generateAllianceSelectionMessage)
