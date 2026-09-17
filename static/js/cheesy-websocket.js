@@ -127,7 +127,12 @@ var CheesyWebsocketV1 = function (path, events, onGap) {
 
   this.connect = function () {
     var protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
-    var socket = new WebSocket(protocol + window.location.host + path + window.location.search);
+    var pageQuery = window.location.search;
+    var streamPath = path;
+    if (pageQuery !== "") {
+      streamPath += path.includes("?") ? "&" + pageQuery.substring(1) : pageQuery;
+    }
+    var socket = new WebSocket(protocol + window.location.host + streamPath);
     that.websocket = socket;
     socket.onopen = function () {
       console.log("Websocket v1 connected to " + path + ".");

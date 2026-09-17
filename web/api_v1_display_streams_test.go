@@ -5,6 +5,7 @@ package web
 import (
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -148,6 +149,59 @@ func TestApiV1WallAndUnpickedBootstraps(t *testing.T) {
 	assert.Equal(t, "/api/v1/streams/displays/unpicked", unpicked.Data.StreamUrl)
 	require.Len(t, unpicked.Data.AllianceSelection.RankedTeams, 1)
 	assert.Equal(t, 254, unpicked.Data.AllianceSelection.RankedTeams[0].TeamId)
+}
+
+func TestApiV1FieldMonitorBootstrapRedactsFtaNotes(t *testing.T) {
+	web := setupTestWeb(t)
+	team := model.Team{Id: 254, Nickname: "Poofs", WpaKey: "wifi-secret", FtaNotes: "FTA-only note"}
+	require.NoError(t, web.arena.Database.CreateTeam(&team))
+	require.NoError(t, web.arena.SubstituteTeams(0, 0, 0, 254, 0, 0))
+	web.arena.ArenaStatusNotifier.Notify()
+
+	publicResponse := web.getHttpResponse("/api/v1/displays/field-monitor/bootstrap?fta=false")
+	require.Equal(t, http.StatusOK, publicResponse.Code)
+	assert.NotContains(t, publicResponse.Body.String(), "FTA-only note")
+	assert.NotContains(t, publicResponse.Body.String(), "wifi-secret")
+
+	ftaResponse := web.getHttpResponse("/api/v1/displays/field-monitor/bootstrap?fta=true")
+	require.Equal(t, http.StatusOK, ftaResponse.Code)
+	assert.Contains(t, ftaResponse.Body.String(), "FTA-only note")
+	assert.NotContains(t, ftaResponse.Body.String(), "wifi-secret")
+
+	web.arena.EventSettings.AdminPassword = "password"
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/displays/field-monitor/bootstrap?fta=true", nil)
+	unauthorized := httptest.NewRecorder()
+	web.newHandler().ServeHTTP(unauthorized, request)
+	assert.Equal(t, http.StatusUnauthorized, unauthorized.Code)
+	assert.Contains(t, unauthorized.Body.String(), "authentication_required")
+}
+
+func TestApiV1FieldMonitorStreamContract(t *testing.T) {
+	web := setupTestWeb(t)
+	server, wsUrl := web.startTestServer()
+	defer server.Close()
+	conn, _, err := gorillawebsocket.DefaultDialer.Dial(wsUrl+"/api/v1/streams/displays/field-monitor?displayId=7&fta=false", nil)
+	require.NoError(t, err)
+	defer conn.Close()
+	for _, expectedType := range []string{"displayConfiguration", "arenaStatus", "eventStatus", "match", "realtimeScore", "timing", "matchClock"} {
+		var message cawebsocket.V1Message
+		require.NoError(t, conn.ReadJSON(&message))
+		assert.Equal(t, expectedType, message.Type)
+		assert.True(t, message.Meta.Bootstrap)
+	}
+	var ready cawebsocket.V1Message
+	require.NoError(t, conn.ReadJSON(&ready))
+	assert.Equal(t, "ready", ready.Type)
+}
+
+func TestFieldMonitorClientSplitsV1StateAndLegacyCommands(t *testing.T) {
+	contents, err := os.ReadFile("../static/js/field_monitor_display.js")
+	require.NoError(t, err)
+	source := string(contents)
+	assert.Contains(t, source, "new CheesyWebsocketV1")
+	assert.Contains(t, source, "/api/v1/displays/field-monitor/bootstrap")
+	assert.Contains(t, source, "commandWebsocket = new CheesyWebsocket")
+	assert.Contains(t, source, "commandWebsocket.send(\"updateTeamNotes\"")
 }
 
 func TestApiV1QueueingStreamBootstrapReadyAndUpdate(t *testing.T) {

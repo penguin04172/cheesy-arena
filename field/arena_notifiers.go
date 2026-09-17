@@ -49,6 +49,11 @@ func (arena *Arena) DisplayBreakDetails() (string, string) {
 	return arena.breakDescription, arena.breakNextMatchName
 }
 
+// FieldMonitorInfrastructureStatus returns the public health labels shown by field monitor displays.
+func (arena *Arena) FieldMonitorInfrastructureStatus() (string, string) {
+	return arena.accessPoint.Status, arena.networkSwitch.Status
+}
+
 // Instantiates notifiers and configures their message producing methods.
 func (arena *Arena) configureNotifiers() {
 	arena.AllianceSelectionNotifier = websocket.NewNotifier("allianceSelection", arena.generateAllianceSelectionMessage)

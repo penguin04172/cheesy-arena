@@ -165,6 +165,57 @@ type apiV1UnpickedBootstrap struct {
 	AllianceSelection apiV1AudienceAllianceSelection `json:"allianceSelection"`
 }
 
+type apiV1FieldMonitorTeam struct {
+	Id       int     `json:"id"`
+	FtaNotes *string `json:"ftaNotes,omitempty"`
+}
+
+type apiV1FieldMonitorConnection struct {
+	WrongStation              string  `json:"wrongStation"`
+	DsLinked                  bool    `json:"dsLinked"`
+	RadioLinked               bool    `json:"radioLinked"`
+	RioLinked                 bool    `json:"rioLinked"`
+	RobotLinked               bool    `json:"robotLinked"`
+	BatteryVoltage            float64 `json:"batteryVoltage"`
+	DsRobotTripTimeMs         int     `json:"dsRobotTripTimeMs"`
+	MissedPacketCount         int     `json:"missedPacketCount"`
+	SecondsSinceLastRobotLink float64 `json:"secondsSinceLastRobotLink"`
+}
+
+type apiV1FieldMonitorWifi struct {
+	TeamId            int     `json:"teamId"`
+	RadioLinked       bool    `json:"radioLinked"`
+	MBits             float64 `json:"mBits"`
+	ConnectionQuality int     `json:"connectionQuality"`
+}
+
+type apiV1FieldMonitorStation struct {
+	Team       *apiV1FieldMonitorTeam       `json:"team"`
+	Connection *apiV1FieldMonitorConnection `json:"connection"`
+	Wifi       apiV1FieldMonitorWifi        `json:"wifi"`
+	Ethernet   bool                         `json:"ethernet"`
+	AStop      bool                         `json:"aStop"`
+	EStop      bool                         `json:"eStop"`
+	Bypass     bool                         `json:"bypass"`
+}
+
+type apiV1FieldMonitorStatus struct {
+	MatchId           int                                 `json:"matchId"`
+	AccessPointStatus string                              `json:"accessPointStatus"`
+	SwitchStatus      string                              `json:"switchStatus"`
+	Stations          map[string]apiV1FieldMonitorStation `json:"stations"`
+}
+
+type apiV1FieldMonitorBootstrap struct {
+	StreamUrl     string                     `json:"streamUrl"`
+	ArenaStatus   apiV1FieldMonitorStatus    `json:"arenaStatus"`
+	Event         apiV1DisplayEventStatus    `json:"event"`
+	Match         apiV1DisplayMatch          `json:"match"`
+	RealtimeScore apiV1AudienceRealtimeScore `json:"realtimeScore"`
+	MatchClock    apiV1MatchClock            `json:"matchClock"`
+	Timing        apiV1DisplayMatchTiming    `json:"timing"`
+}
+
 type apiV1QueueingBootstrap struct {
 	StreamUrl  string                  `json:"streamUrl"`
 	Matches    []apiV1QueueingMatch    `json:"matches"`
@@ -192,24 +243,28 @@ type apiV1DisplayState struct {
 	allianceStation apiV1AllianceStationBootstrap
 	wall            apiV1WallBootstrap
 	unpicked        apiV1UnpickedBootstrap
+	fieldMonitor    apiV1FieldMonitorBootstrap
+	fieldMonitorFta apiV1FieldMonitorBootstrap
 
-	queueingMatches     *websocket.Notifier
-	announcerMatch      *websocket.Notifier
-	postedScore         *websocket.Notifier
-	realtimeScore       *websocket.Notifier
-	matchClock          *websocket.Notifier
-	timing              *websocket.Notifier
-	eventStatus         *websocket.Notifier
-	audienceMode        *websocket.Notifier
-	reload              *websocket.Notifier
-	displayMatch        *websocket.Notifier
-	audienceRealtime    *websocket.Notifier
-	audiencePosted      *websocket.Notifier
-	allianceSelection   *websocket.Notifier
-	lowerThird          *websocket.Notifier
-	playSound           *websocket.Notifier
-	allianceStationMode *websocket.Notifier
-	stationStatuses     *websocket.Notifier
+	queueingMatches       *websocket.Notifier
+	announcerMatch        *websocket.Notifier
+	postedScore           *websocket.Notifier
+	realtimeScore         *websocket.Notifier
+	matchClock            *websocket.Notifier
+	timing                *websocket.Notifier
+	eventStatus           *websocket.Notifier
+	audienceMode          *websocket.Notifier
+	reload                *websocket.Notifier
+	displayMatch          *websocket.Notifier
+	audienceRealtime      *websocket.Notifier
+	audiencePosted        *websocket.Notifier
+	allianceSelection     *websocket.Notifier
+	lowerThird            *websocket.Notifier
+	playSound             *websocket.Notifier
+	allianceStationMode   *websocket.Notifier
+	stationStatuses       *websocket.Notifier
+	fieldMonitorStatus    *websocket.Notifier
+	fieldMonitorFtaStatus *websocket.Notifier
 }
 
 func (web *Web) initializeApiV1DisplayState() {
@@ -221,6 +276,8 @@ func (web *Web) initializeApiV1DisplayState() {
 	state.allianceStation.StreamUrl = "/api/v1/streams/displays/alliance-station"
 	state.wall.StreamUrl = "/api/v1/streams/displays/wall"
 	state.unpicked.StreamUrl = "/api/v1/streams/displays/unpicked"
+	state.fieldMonitor.StreamUrl = "/api/v1/streams/displays/field-monitor"
+	state.fieldMonitorFta.StreamUrl = "/api/v1/streams/displays/field-monitor?fta=true"
 	web.refreshApiV1DisplayMatches()
 	web.refreshApiV1PostedScore()
 	web.refreshApiV1RealtimeScore()
@@ -230,6 +287,7 @@ func (web *Web) initializeApiV1DisplayState() {
 	web.refreshApiV1AudienceMode()
 	web.refreshApiV1AudienceState()
 	web.refreshApiV1AllianceStationState()
+	web.refreshApiV1FieldMonitorStatus()
 
 	state.queueingMatches = websocket.NewNotifier("matches", func() any { return web.apiV1QueueingMatchesSnapshot() })
 	state.announcerMatch = websocket.NewNotifier("match", func() any { return web.apiV1AnnouncerMatchSnapshot() })
@@ -248,6 +306,8 @@ func (web *Web) initializeApiV1DisplayState() {
 	state.playSound = websocket.NewNotifier("playSound", nil)
 	state.allianceStationMode = websocket.NewNotifier("allianceStationDisplayMode", func() any { return web.apiV1AllianceStationModeSnapshot() })
 	state.stationStatuses = websocket.NewNotifier("stationStatuses", func() any { return web.apiV1StationStatusesSnapshot() })
+	state.fieldMonitorStatus = websocket.NewNotifier("arenaStatus", func() any { return web.apiV1FieldMonitorStatusSnapshot(false) })
+	state.fieldMonitorFtaStatus = websocket.NewNotifier("arenaStatus", func() any { return web.apiV1FieldMonitorStatusSnapshot(true) })
 
 	web.arena.MatchLoadNotifier.Observe(func(any) {
 		web.refreshApiV1DisplayMatches()
@@ -276,7 +336,13 @@ func (web *Web) initializeApiV1DisplayState() {
 	web.arena.LowerThirdNotifier.Observe(func(any) { web.refreshApiV1LowerThird(); state.lowerThird.Notify() })
 	web.arena.PlaySoundNotifier.Observe(func(value any) { state.playSound.NotifyWithMessage(value) })
 	web.arena.AllianceStationDisplayModeNotifier.Observe(func(any) { web.refreshApiV1AllianceStationMode(); state.allianceStationMode.Notify() })
-	web.arena.ArenaStatusNotifier.Observe(func(any) { web.refreshApiV1StationStatuses(); state.stationStatuses.Notify() })
+	web.arena.ArenaStatusNotifier.Observe(func(any) {
+		web.refreshApiV1StationStatuses()
+		web.refreshApiV1FieldMonitorStatus()
+		state.stationStatuses.Notify()
+		state.fieldMonitorStatus.Notify()
+		state.fieldMonitorFtaStatus.Notify()
+	})
 	web.arena.ReloadDisplaysNotifier.Observe(func(value any) { state.reload.NotifyWithMessage(value) })
 }
 
@@ -318,6 +384,8 @@ func (web *Web) refreshApiV1MatchClock() {
 	web.apiV1Displays.audience.MatchClock = value
 	web.apiV1Displays.allianceStation.MatchClock = value
 	web.apiV1Displays.wall.MatchClock = value
+	web.apiV1Displays.fieldMonitor.MatchClock = value
+	web.apiV1Displays.fieldMonitorFta.MatchClock = value
 	web.apiV1Displays.mu.Unlock()
 }
 func (web *Web) refreshApiV1DisplayTiming() {
@@ -328,6 +396,8 @@ func (web *Web) refreshApiV1DisplayTiming() {
 	web.apiV1Displays.audience.Timing = value
 	web.apiV1Displays.allianceStation.Timing = value
 	web.apiV1Displays.wall.Timing = value
+	web.apiV1Displays.fieldMonitor.Timing = value
+	web.apiV1Displays.fieldMonitorFta.Timing = value
 	web.apiV1Displays.mu.Unlock()
 }
 func (web *Web) refreshApiV1EventStatus() {
@@ -335,6 +405,8 @@ func (web *Web) refreshApiV1EventStatus() {
 	web.apiV1Displays.mu.Lock()
 	web.apiV1Displays.queueing.Event = value
 	web.apiV1Displays.announcer.Event = value
+	web.apiV1Displays.fieldMonitor.Event = value
+	web.apiV1Displays.fieldMonitorFta.Event = value
 	web.apiV1Displays.mu.Unlock()
 }
 func (web *Web) refreshApiV1AudienceMode() {
@@ -365,6 +437,8 @@ func (web *Web) refreshApiV1DisplayMatch() {
 	web.apiV1Displays.audience.Match = value
 	web.apiV1Displays.allianceStation.Match = value
 	web.apiV1Displays.wall.Match = value
+	web.apiV1Displays.fieldMonitor.Match = value
+	web.apiV1Displays.fieldMonitorFta.Match = value
 	web.apiV1Displays.mu.Unlock()
 }
 
@@ -428,6 +502,8 @@ func (web *Web) refreshApiV1AudienceRealtimeScore() {
 	web.apiV1Displays.mu.Lock()
 	web.apiV1Displays.audience.RealtimeScore = value
 	web.apiV1Displays.wall.RealtimeScore = value
+	web.apiV1Displays.fieldMonitor.RealtimeScore = value
+	web.apiV1Displays.fieldMonitorFta.RealtimeScore = value
 	web.apiV1Displays.mu.Unlock()
 }
 
@@ -542,6 +618,41 @@ func (web *Web) refreshApiV1StationStatuses() {
 	web.apiV1Displays.mu.Unlock()
 }
 
+func (web *Web) refreshApiV1FieldMonitorStatus() {
+	publicStatus := web.buildApiV1FieldMonitorStatus(false)
+	ftaStatus := web.buildApiV1FieldMonitorStatus(true)
+	web.apiV1Displays.mu.Lock()
+	web.apiV1Displays.fieldMonitor.ArenaStatus = publicStatus
+	web.apiV1Displays.fieldMonitorFta.ArenaStatus = ftaStatus
+	web.apiV1Displays.mu.Unlock()
+}
+
+func (web *Web) buildApiV1FieldMonitorStatus(includeFtaNotes bool) apiV1FieldMonitorStatus {
+	accessPointStatus, switchStatus := web.arena.FieldMonitorInfrastructureStatus()
+	value := apiV1FieldMonitorStatus{AccessPointStatus: accessPointStatus, SwitchStatus: switchStatus, Stations: make(map[string]apiV1FieldMonitorStation, 6)}
+	if web.arena.CurrentMatch != nil {
+		value.MatchId = web.arena.CurrentMatch.Id
+	}
+	for _, station := range []string{"R1", "R2", "R3", "B1", "B2", "B3"} {
+		source := web.arena.AllianceStations[station]
+		item := apiV1FieldMonitorStation{Ethernet: source.Ethernet, AStop: source.AStop, EStop: source.EStop, Bypass: source.Bypass,
+			Wifi: apiV1FieldMonitorWifi{TeamId: source.WifiStatus.TeamId, RadioLinked: source.WifiStatus.RadioLinked, MBits: source.WifiStatus.MBits, ConnectionQuality: source.WifiStatus.ConnectionQuality}}
+		if source.Team != nil {
+			item.Team = &apiV1FieldMonitorTeam{Id: source.Team.Id}
+			if includeFtaNotes {
+				notes := source.Team.FtaNotes
+				item.Team.FtaNotes = &notes
+			}
+		}
+		if source.DsConn != nil {
+			connection := source.DsConn
+			item.Connection = &apiV1FieldMonitorConnection{WrongStation: connection.WrongStation, DsLinked: connection.DsLinked, RadioLinked: connection.RadioLinked, RioLinked: connection.RioLinked, RobotLinked: connection.RobotLinked, BatteryVoltage: connection.BatteryVoltage, DsRobotTripTimeMs: connection.DsRobotTripTimeMs, MissedPacketCount: connection.MissedPacketCount, SecondsSinceLastRobotLink: connection.SecondsSinceLastRobotLink}
+		}
+		value.Stations[station] = item
+	}
+	return value
+}
+
 func (web *Web) apiV1QueueingMatchesSnapshot() any {
 	web.apiV1Displays.mu.RLock()
 	defer web.apiV1Displays.mu.RUnlock()
@@ -617,6 +728,14 @@ func (web *Web) apiV1StationStatusesSnapshot() any {
 	defer web.apiV1Displays.mu.RUnlock()
 	return web.apiV1Displays.allianceStation.Stations
 }
+func (web *Web) apiV1FieldMonitorStatusSnapshot(isFta bool) any {
+	web.apiV1Displays.mu.RLock()
+	defer web.apiV1Displays.mu.RUnlock()
+	if isFta {
+		return web.apiV1Displays.fieldMonitorFta.ArenaStatus
+	}
+	return web.apiV1Displays.fieldMonitor.ArenaStatus
+}
 
 func (web *Web) apiV1QueueingBootstrapHandler(w http.ResponseWriter, r *http.Request) {
 	web.apiV1Displays.mu.RLock()
@@ -647,6 +766,21 @@ func (web *Web) apiV1UnpickedBootstrapHandler(w http.ResponseWriter, r *http.Req
 	web.apiV1Displays.mu.RLock()
 	defer web.apiV1Displays.mu.RUnlock()
 	writeApiV1Data(w, r, http.StatusOK, web.apiV1Displays.unpicked, nil)
+}
+func (web *Web) apiV1FieldMonitorBootstrapHandler(w http.ResponseWriter, r *http.Request) {
+	isFta := r.URL.Query().Get("fta") == "true"
+	if isFta {
+		web.apiV1RequireAdmin(http.HandlerFunc(web.apiV1FieldMonitorFtaBootstrapHandler)).ServeHTTP(w, r)
+		return
+	}
+	web.apiV1Displays.mu.RLock()
+	defer web.apiV1Displays.mu.RUnlock()
+	writeApiV1Data(w, r, http.StatusOK, web.apiV1Displays.fieldMonitor, nil)
+}
+func (web *Web) apiV1FieldMonitorFtaBootstrapHandler(w http.ResponseWriter, r *http.Request) {
+	web.apiV1Displays.mu.RLock()
+	defer web.apiV1Displays.mu.RUnlock()
+	writeApiV1Data(w, r, http.StatusOK, web.apiV1Displays.fieldMonitorFta, nil)
 }
 
 func (web *Web) apiV1QueueingStreamHandler(w http.ResponseWriter, r *http.Request) {
@@ -736,6 +870,33 @@ func (web *Web) apiV1UnpickedStreamHandler(w http.ResponseWriter, r *http.Reques
 	}
 	defer ws.Close()
 	ws.HandleNotifiersV1(display.Notifier, web.apiV1Displays.allianceSelection, web.apiV1Displays.audienceMode, web.apiV1Displays.reload)
+}
+
+func (web *Web) apiV1FieldMonitorStreamHandler(w http.ResponseWriter, r *http.Request) {
+	isFta := r.URL.Query().Get("fta") == "true"
+	if isFta && !web.userIsAdmin(w, r) {
+		return
+	}
+	legacyPath := "/displays/field_monitor/websocket"
+	if r.URL.Query().Get("fms") == "true" {
+		legacyPath = "/displays/fms_field_monitor/websocket"
+	}
+	display, err := web.registerDisplayForPath(r, legacyPath)
+	if err != nil {
+		handleWebErr(w, err)
+		return
+	}
+	defer web.arena.MarkDisplayDisconnected(display.DisplayConfiguration.Id)
+	ws, err := websocket.NewWebsocket(w, r)
+	if err != nil {
+		return
+	}
+	defer ws.Close()
+	statusNotifier := web.apiV1Displays.fieldMonitorStatus
+	if isFta {
+		statusNotifier = web.apiV1Displays.fieldMonitorFtaStatus
+	}
+	ws.HandleNotifiersV1(display.Notifier, statusNotifier, web.apiV1Displays.eventStatus, web.apiV1Displays.displayMatch, web.apiV1Displays.audienceRealtime, web.apiV1Displays.timing, web.apiV1Displays.matchClock, web.apiV1Displays.reload)
 }
 
 func apiV1MatchState(state field.MatchState) string {
