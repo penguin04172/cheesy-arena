@@ -737,6 +737,15 @@ paths:
               schema: {$ref: "#/components/schemas/RefereeFoulsResponse"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
+  /admin/alliance-selection/bootstrap:
+    get:
+      operationId: getAllianceSelectionControlBootstrap
+      summary: Get the alliance selection control read-model and stream URL
+      security: [{sessionCookie: []}]
+      responses:
+        "200": {description: Alliance selection timer, rankings, and audience display mode snapshot}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
   /displays/queueing/matches:
     get:
       operationId: listQueueingDisplayMatches
@@ -880,6 +889,14 @@ paths:
       parameters:
         - {in: query, name: fta, schema: {type: boolean}}
         - {in: query, name: fms, schema: {type: boolean}}
+      responses:
+        "101": {description: WebSocket protocol switched; messages use the v1 stream envelope.}
+  /streams/admin/alliance-selection:
+    get:
+      operationId: streamAllianceSelectionControl
+      summary: Upgrade to the sequenced alliance selection control read-model stream
+      security: [{sessionCookie: []}]
+      x-websocket: true
       responses:
         "101": {description: WebSocket protocol switched; messages use the v1 stream envelope.}
 components:

@@ -204,6 +204,45 @@ func TestFieldMonitorClientSplitsV1StateAndLegacyCommands(t *testing.T) {
 	assert.Contains(t, source, "commandWebsocket.send(\"updateTeamNotes\"")
 }
 
+func TestApiV1AllianceSelectionControlBootstrapAndStream(t *testing.T) {
+	web := setupTestWeb(t)
+	web.arena.AllianceSelectionTimeRemainingSec = 42
+	web.arena.AudienceDisplayMode = "allianceSelection"
+	web.arena.AllianceSelectionNotifier.Notify()
+	web.arena.AudienceDisplayModeNotifier.Notify()
+	response := web.getHttpResponse("/api/v1/admin/alliance-selection/bootstrap")
+	require.Equal(t, http.StatusOK, response.Code)
+	var body struct {
+		Data apiV1AllianceSelectionControlBootstrap `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &body))
+	assert.Equal(t, 42, body.Data.AllianceSelection.TimeRemainingSec)
+	assert.Equal(t, "allianceSelection", body.Data.DisplayMode)
+
+	server, wsUrl := web.startTestServer()
+	defer server.Close()
+	conn, _, err := gorillawebsocket.DefaultDialer.Dial(wsUrl+"/api/v1/streams/admin/alliance-selection", nil)
+	require.NoError(t, err)
+	defer conn.Close()
+	for _, expected := range []string{"allianceSelection", "audienceDisplayMode"} {
+		var message cawebsocket.V1Message
+		require.NoError(t, conn.ReadJSON(&message))
+		assert.Equal(t, expected, message.Type)
+	}
+	var ready cawebsocket.V1Message
+	require.NoError(t, conn.ReadJSON(&ready))
+	assert.Equal(t, "ready", ready.Type)
+}
+
+func TestAllianceSelectionClientSplitsStateAndCommands(t *testing.T) {
+	contents, err := os.ReadFile("../static/js/alliance_selection.js")
+	require.NoError(t, err)
+	source := string(contents)
+	assert.Contains(t, source, "new CheesyWebsocketV1")
+	assert.Contains(t, source, "new CheesyWebsocket(\"/alliance_selection/websocket\", {})")
+	assert.Contains(t, source, "/api/v1/admin/alliance-selection/bootstrap")
+}
+
 func TestApiV1QueueingStreamBootstrapReadyAndUpdate(t *testing.T) {
 	web := setupTestWeb(t)
 	server, wsUrl := web.startTestServer()

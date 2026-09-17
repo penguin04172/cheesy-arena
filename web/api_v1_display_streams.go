@@ -165,6 +165,12 @@ type apiV1UnpickedBootstrap struct {
 	AllianceSelection apiV1AudienceAllianceSelection `json:"allianceSelection"`
 }
 
+type apiV1AllianceSelectionControlBootstrap struct {
+	StreamUrl         string                         `json:"streamUrl"`
+	DisplayMode       string                         `json:"displayMode"`
+	AllianceSelection apiV1AudienceAllianceSelection `json:"allianceSelection"`
+}
+
 type apiV1FieldMonitorTeam struct {
 	Id       int     `json:"id"`
 	FtaNotes *string `json:"ftaNotes,omitempty"`
@@ -777,6 +783,15 @@ func (web *Web) apiV1FieldMonitorBootstrapHandler(w http.ResponseWriter, r *http
 	defer web.apiV1Displays.mu.RUnlock()
 	writeApiV1Data(w, r, http.StatusOK, web.apiV1Displays.fieldMonitor, nil)
 }
+
+func (web *Web) apiV1AllianceSelectionControlBootstrapHandler(w http.ResponseWriter, r *http.Request) {
+	web.apiV1Displays.mu.RLock()
+	defer web.apiV1Displays.mu.RUnlock()
+	writeApiV1Data(w, r, http.StatusOK, apiV1AllianceSelectionControlBootstrap{
+		StreamUrl: "/api/v1/streams/admin/alliance-selection", DisplayMode: web.apiV1Displays.unpicked.DisplayMode,
+		AllianceSelection: web.apiV1Displays.unpicked.AllianceSelection,
+	}, nil)
+}
 func (web *Web) apiV1FieldMonitorFtaBootstrapHandler(w http.ResponseWriter, r *http.Request) {
 	web.apiV1Displays.mu.RLock()
 	defer web.apiV1Displays.mu.RUnlock()
@@ -897,6 +912,18 @@ func (web *Web) apiV1FieldMonitorStreamHandler(w http.ResponseWriter, r *http.Re
 		statusNotifier = web.apiV1Displays.fieldMonitorFtaStatus
 	}
 	ws.HandleNotifiersV1(display.Notifier, statusNotifier, web.apiV1Displays.eventStatus, web.apiV1Displays.displayMatch, web.apiV1Displays.audienceRealtime, web.apiV1Displays.timing, web.apiV1Displays.matchClock, web.apiV1Displays.reload)
+}
+
+func (web *Web) apiV1AllianceSelectionControlStreamHandler(w http.ResponseWriter, r *http.Request) {
+	if !web.userIsAdmin(w, r) {
+		return
+	}
+	ws, err := websocket.NewWebsocket(w, r)
+	if err != nil {
+		return
+	}
+	defer ws.Close()
+	ws.HandleNotifiersV1(web.apiV1Displays.allianceSelection, web.apiV1Displays.audienceMode)
 }
 
 func apiV1MatchState(state field.MatchState) string {

@@ -4,6 +4,8 @@
 // Client-side logic for the alliance selection page.
 
 var websocket;
+var stateWebsocket;
+let bootstrapRequestId = 0;
 
 // Sends a websocket message to set the timer to the given time limit.
 const setTimer = function (timeLimitInput) {
@@ -42,6 +44,19 @@ const handleAudienceDisplayMode = function (data) {
   $("input[name=audienceDisplay][value=" + data + "]").prop("checked", true);
 };
 
+const handleV1AllianceSelection = function (data) {
+  handleAllianceSelection({TimeRemainingSec: data.timeRemainingSec});
+};
+
+const loadAllianceSelectionBootstrap = function () {
+  const requestId = ++bootstrapRequestId; const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 5000);
+  return fetch("/api/v1/admin/alliance-selection/bootstrap", {signal: controller.signal})
+    .then(response => { if (!response.ok) { throw new Error("Unable to load alliance selection bootstrap: " + response.status); } return response.json(); })
+    .then(response => {
+      if (requestId === bootstrapRequestId) { handleV1AllianceSelection(response.data.allianceSelection); handleAudienceDisplayMode(response.data.displayMode); }
+    }).catch(error => console.error(error)).finally(() => clearTimeout(timeout));
+};
+
 // Sends a websocket message to change what the audience display is showing.
 const setAudienceDisplay = function () {
   websocket.send("setAudienceDisplay", $("input[name=audienceDisplay]:checked").val());
@@ -52,13 +67,11 @@ $(function () {
   const startTime = moment(new Date()).hour(13).minute(0).second(0);
   newDateTimePicker("startTimePicker", startTime.toDate());
 
-  // Set up the websocket back to the server.
-  websocket = new CheesyWebsocket("/alliance_selection/websocket", {
-    allianceSelection: function (event) {
-      handleAllianceSelection(event.data);
-    },
-    audienceDisplayMode: function (event) {
-      handleAudienceDisplayMode(event.data);
-    },
+  websocket = new CheesyWebsocket("/alliance_selection/websocket", {});
+  loadAllianceSelectionBootstrap().finally(function () {
+    stateWebsocket = new CheesyWebsocketV1("/api/v1/streams/admin/alliance-selection", {
+      allianceSelection: function (event) { handleV1AllianceSelection(event.data); },
+      audienceDisplayMode: function (event) { handleAudienceDisplayMode(event.data); },
+    }, loadAllianceSelectionBootstrap);
   });
 });
