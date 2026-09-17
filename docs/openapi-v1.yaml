@@ -808,6 +808,18 @@ paths:
           content:
             application/json:
               schema: {$ref: "#/components/schemas/AllianceStationDisplayBootstrapResponse"}
+  /displays/wall/bootstrap:
+    get:
+      operationId: getWallDisplayBootstrap
+      summary: Get the recovery snapshot and v1 stream URL for the wall display
+      responses:
+        "200": {description: Immutable wall display snapshot}
+  /displays/unpicked/bootstrap:
+    get:
+      operationId: getUnpickedDisplayBootstrap
+      summary: Get the recovery snapshot and v1 stream URL for the unpicked teams display
+      responses:
+        "200": {description: Immutable unpicked teams display snapshot}
   /streams/displays/queueing:
     get:
       operationId: streamQueueingDisplay
@@ -833,6 +845,20 @@ paths:
     get:
       operationId: streamAllianceStationDisplay
       summary: Upgrade to the sequenced alliance station display WebSocket v1 stream
+      x-websocket: true
+      responses:
+        "101": {description: WebSocket protocol switched; messages use the v1 stream envelope.}
+  /streams/displays/wall:
+    get:
+      operationId: streamWallDisplay
+      summary: Upgrade to the sequenced wall display WebSocket v1 stream
+      x-websocket: true
+      responses:
+        "101": {description: WebSocket protocol switched; messages use the v1 stream envelope.}
+  /streams/displays/unpicked:
+    get:
+      operationId: streamUnpickedDisplay
+      summary: Upgrade to the sequenced unpicked teams WebSocket v1 stream
       x-websocket: true
       responses:
         "101": {description: WebSocket protocol switched; messages use the v1 stream envelope.}

@@ -8,6 +8,7 @@ if (typeof DisplayShared === "undefined") {
 }
 
 var websocket;
+let bootstrapRequestId = 0;
 let transitionMap;
 const transitionQueue = [];
 let transitionInProgress = false;
@@ -20,6 +21,28 @@ let hasMessage = false;
 const hubActiveController = DisplayShared.createHubActiveController(function () {
   return currentScreen;
 });
+
+const legacyMatchStateIds = {pre_match: 0, start_match: 1, auto: 2, pause: 3, teleop: 4, post_match: 5, timeout_active: 6, post_timeout: 7};
+const legacyMatchType = type => type === "qualification" ? matchTypeQualification : (type === "playoff" ? matchTypePlayoff : (type === "practice" ? 1 : 0));
+const legacyScoreSummary = function (summary) {
+  const result = {}; Object.keys(summary || {}).forEach(key => { result[key.charAt(0).toUpperCase() + key.slice(1)] = summary[key]; }); return result;
+};
+const legacyMatch = function (data) {
+  const teams = {};
+  Object.keys(data.teams || {}).forEach(station => { const team = data.teams[station]; teams[station] = team ? {Id: team.id, Nickname: team.nickname, YellowCard: team.yellowCard} : null; });
+  return {Match: {Id: data.id, Type: legacyMatchType(data.type), LongName: data.longName, NameDetail: data.nameDetail,
+    PlayoffRedAlliance: data.playoffRedAlliance, PlayoffBlueAlliance: data.playoffBlueAlliance,
+    Red1: data.red[0], Red2: data.red[1], Red3: data.red[2], Blue1: data.blue[0], Blue2: data.blue[1], Blue3: data.blue[2]},
+  Teams: teams, Rankings: data.rankings || {}, Matchup: data.series ? {NumWinsToAdvance: data.series.numWinsToAdvance,
+    RedAllianceWins: data.series.redAllianceWins, BlueAllianceWins: data.series.blueAllianceWins} : null,
+  BreakDescription: data.breakDescription, BreakNextMatchName: data.breakNextMatchName};
+};
+const legacyRealtimeScore = data => ({Red: {ScoreSummary: legacyScoreSummary(data.red.summary), ActiveRemainingSec: data.red.activeRemainingSec, ActiveDurationSec: data.red.activeDurationSec},
+  Blue: {ScoreSummary: legacyScoreSummary(data.blue.summary), ActiveRemainingSec: data.blue.activeRemainingSec, ActiveDurationSec: data.blue.activeDurationSec}});
+const handleV1Timing = data => handleMatchTiming({AutoDurationSec: data.autoDurationSec, PauseDurationSec: data.pauseDurationSec,
+  TransitionShiftDurationSec: data.transitionShiftDurationSec, ShiftDurationSec: data.shiftDurationSec,
+  EndgameDurationSec: data.endgameDurationSec, TimeoutDurationSec: data.timeoutDurationSec});
+const handleV1MatchClock = data => handleMatchTime({MatchState: legacyMatchStateIds[data.state], MatchTimeSec: data.elapsedSec});
 
 // Constants for overlay positioning. The CSS is the source of truth for the values that represent initial state.
 const eventMatchInfoDown = "30px";
@@ -284,6 +307,18 @@ const hideMessage = function (callback) {
   });
 };
 
+const applyWallBootstrap = function (data) {
+  handleMatchLoad(legacyMatch(data.match)); handleRealtimeScore(legacyRealtimeScore(data.realtimeScore));
+  handleV1Timing(data.timing); handleV1MatchClock(data.matchClock); handleAudienceDisplayMode(data.displayMode);
+};
+const loadWallBootstrap = function () {
+  const requestId = ++bootstrapRequestId; const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 5000);
+  return fetch("/api/v1/displays/wall/bootstrap", {signal: controller.signal})
+    .then(response => { if (!response.ok) { throw new Error("Unable to load wall bootstrap: " + response.status); } return response.json(); })
+    .then(response => { if (requestId === bootstrapRequestId) { applyWallBootstrap(response.data); } })
+    .catch(error => console.error(error)).finally(() => clearTimeout(timeout));
+};
+
 $(function () {
   // Read the configuration for this display from the URL query string.
   const urlParams = new URLSearchParams(window.location.search);
@@ -306,26 +341,24 @@ $(function () {
     showMessage();
   }
 
-  // Set up the websocket back to the server.
-  websocket = new CheesyWebsocket("/displays/wall/websocket", {
-    allianceSelection: function (event) {
-      handleAllianceSelection(event.data);
-    },
+  loadWallBootstrap().finally(function () {
+    websocket = new CheesyWebsocketV1("/api/v1/streams/displays/wall", {
     audienceDisplayMode: function (event) {
       handleAudienceDisplayMode(event.data);
     },
-    matchLoad: function (event) {
-      handleMatchLoad(event.data);
+    match: function (event) {
+      handleMatchLoad(legacyMatch(event.data));
     },
-    matchTime: function (event) {
-      handleMatchTime(event.data);
+    matchClock: function (event) {
+      handleV1MatchClock(event.data);
     },
-    matchTiming: function (event) {
-      handleMatchTiming(event.data);
+    timing: function (event) {
+      handleV1Timing(event.data);
     },
     realtimeScore: function (event) {
-      handleRealtimeScore(event.data);
+      handleRealtimeScore(legacyRealtimeScore(event.data));
     },
+    }, loadWallBootstrap);
   });
 
   // Map how to transition from one screen to another. Missing links between screens indicate that first we

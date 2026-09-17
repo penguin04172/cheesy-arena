@@ -28,8 +28,10 @@ func TestApiV1OpenApiDocument(t *testing.T) {
 		"/displays/announcer/score",
 		"/displays/queueing/bootstrap", "/displays/announcer/bootstrap",
 		"/displays/audience/bootstrap", "/displays/alliance-station/bootstrap",
+		"/displays/wall/bootstrap", "/displays/unpicked/bootstrap",
 		"/streams/displays/queueing", "/streams/displays/announcer",
 		"/streams/displays/audience", "/streams/displays/alliance-station",
+		"/streams/displays/wall", "/streams/displays/unpicked",
 	} {
 		if assert.Contains(t, document.Paths, path) {
 			assert.Contains(t, document.Paths[path], "get")

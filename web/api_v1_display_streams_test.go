@@ -94,6 +94,8 @@ func TestApiV1AudienceAndAllianceStationStreamContracts(t *testing.T) {
 	}{
 		{"/api/v1/streams/displays/audience?displayId=3", []string{"displayConfiguration", "match", "realtimeScore", "postedScore", "timing", "matchClock", "audienceDisplayMode", "allianceSelection", "lowerThird"}},
 		{"/api/v1/streams/displays/alliance-station?displayId=4", []string{"displayConfiguration", "match", "realtimeScore", "timing", "matchClock", "allianceStationDisplayMode", "stationStatuses"}},
+		{"/api/v1/streams/displays/wall?displayId=5", []string{"displayConfiguration", "match", "realtimeScore", "timing", "matchClock", "audienceDisplayMode"}},
+		{"/api/v1/streams/displays/unpicked?displayId=6", []string{"displayConfiguration", "allianceSelection", "audienceDisplayMode"}},
 	} {
 		conn, _, err := gorillawebsocket.DefaultDialer.Dial(wsUrl+test.path, nil)
 		require.NoError(t, err)
@@ -111,7 +113,7 @@ func TestApiV1AudienceAndAllianceStationStreamContracts(t *testing.T) {
 }
 
 func TestAudienceAndAllianceStationClientsUseV1Streams(t *testing.T) {
-	for _, path := range []string{"../static/js/audience_display.js", "../static/js/alliance_station_display.js"} {
+	for _, path := range []string{"../static/js/audience_display.js", "../static/js/alliance_station_display.js", "../static/js/wall_display.js", "../static/js/unpicked_display.js"} {
 		contents, err := os.ReadFile(path)
 		require.NoError(t, err)
 		source := string(contents)
@@ -119,6 +121,33 @@ func TestAudienceAndAllianceStationClientsUseV1Streams(t *testing.T) {
 		assert.Contains(t, source, "/api/v1/displays/")
 		assert.NotContains(t, source, "new CheesyWebsocket(\"")
 	}
+}
+
+func TestApiV1WallAndUnpickedBootstraps(t *testing.T) {
+	web := setupTestWeb(t)
+	web.arena.AudienceDisplayMode = "allianceSelection"
+	web.arena.AllianceSelectionRankedTeams = []model.AllianceSelectionRankedTeam{{Rank: 1, TeamId: 254}}
+	web.arena.AudienceDisplayModeNotifier.Notify()
+	web.arena.AllianceSelectionNotifier.Notify()
+
+	var wall struct {
+		Data apiV1WallBootstrap `json:"data"`
+	}
+	response := web.getHttpResponse("/api/v1/displays/wall/bootstrap")
+	require.Equal(t, http.StatusOK, response.Code)
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &wall))
+	assert.Equal(t, "/api/v1/streams/displays/wall", wall.Data.StreamUrl)
+	assert.Equal(t, "allianceSelection", wall.Data.DisplayMode)
+
+	var unpicked struct {
+		Data apiV1UnpickedBootstrap `json:"data"`
+	}
+	response = web.getHttpResponse("/api/v1/displays/unpicked/bootstrap")
+	require.Equal(t, http.StatusOK, response.Code)
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &unpicked))
+	assert.Equal(t, "/api/v1/streams/displays/unpicked", unpicked.Data.StreamUrl)
+	require.Len(t, unpicked.Data.AllianceSelection.RankedTeams, 1)
+	assert.Equal(t, 254, unpicked.Data.AllianceSelection.RankedTeams[0].TeamId)
 }
 
 func TestApiV1QueueingStreamBootstrapReadyAndUpdate(t *testing.T) {

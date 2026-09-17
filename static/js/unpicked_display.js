@@ -18,6 +18,7 @@ $(function () {
 
   let currentRankedTeams = [];
   let isAllianceSelection = false;
+  let bootstrapRequestId = 0;
 
   const updateDisplay = function() {
     if (isAllianceSelection && currentRankedTeams.length > 0) {
@@ -32,15 +33,35 @@ $(function () {
     }
   };
 
-  new CheesyWebsocket("/displays/unpicked/websocket", {
+  const applyAllianceSelection = function (data) {
+    currentRankedTeams = (data.rankedTeams || []).map(team => ({Rank: team.rank, TeamId: team.teamId, Picked: team.picked}));
+    updateDisplay();
+  };
+  const applyBootstrap = function (data) {
+    applyAllianceSelection(data.allianceSelection);
+    isAllianceSelection = data.displayMode === "allianceSelection";
+    updateDisplay();
+  };
+  const loadBootstrap = function () {
+    const requestId = ++bootstrapRequestId;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    return fetch("/api/v1/displays/unpicked/bootstrap", {signal: controller.signal})
+      .then(response => { if (!response.ok) { throw new Error("Unable to load unpicked bootstrap: " + response.status); } return response.json(); })
+      .then(response => { if (requestId === bootstrapRequestId) { applyBootstrap(response.data); } })
+      .catch(error => console.error(error)).finally(() => clearTimeout(timeout));
+  };
+
+  loadBootstrap().finally(function () {
+    new CheesyWebsocketV1("/api/v1/streams/displays/unpicked", {
     allianceSelection: function (event) {
-      currentRankedTeams = event.data.RankedTeams || [];
-      updateDisplay();
+      applyAllianceSelection(event.data);
     },
     audienceDisplayMode: function (event) {
       isAllianceSelection = event.data === "allianceSelection";
       updateDisplay();
     }
+    }, loadBootstrap);
   });
 });
 

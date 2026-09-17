@@ -150,6 +150,21 @@ type apiV1AllianceStationBootstrap struct {
 	Stations      map[string]apiV1AllianceStationStatus `json:"stations"`
 }
 
+type apiV1WallBootstrap struct {
+	StreamUrl     string                     `json:"streamUrl"`
+	Match         apiV1DisplayMatch          `json:"match"`
+	RealtimeScore apiV1AudienceRealtimeScore `json:"realtimeScore"`
+	MatchClock    apiV1MatchClock            `json:"matchClock"`
+	Timing        apiV1DisplayMatchTiming    `json:"timing"`
+	DisplayMode   string                     `json:"displayMode"`
+}
+
+type apiV1UnpickedBootstrap struct {
+	StreamUrl         string                         `json:"streamUrl"`
+	DisplayMode       string                         `json:"displayMode"`
+	AllianceSelection apiV1AudienceAllianceSelection `json:"allianceSelection"`
+}
+
 type apiV1QueueingBootstrap struct {
 	StreamUrl  string                  `json:"streamUrl"`
 	Matches    []apiV1QueueingMatch    `json:"matches"`
@@ -175,6 +190,8 @@ type apiV1DisplayState struct {
 	announcer       apiV1AnnouncerBootstrap
 	audience        apiV1AudienceBootstrap
 	allianceStation apiV1AllianceStationBootstrap
+	wall            apiV1WallBootstrap
+	unpicked        apiV1UnpickedBootstrap
 
 	queueingMatches     *websocket.Notifier
 	announcerMatch      *websocket.Notifier
@@ -202,6 +219,8 @@ func (web *Web) initializeApiV1DisplayState() {
 	state.announcer.StreamUrl = "/api/v1/streams/displays/announcer"
 	state.audience.StreamUrl = "/api/v1/streams/displays/audience"
 	state.allianceStation.StreamUrl = "/api/v1/streams/displays/alliance-station"
+	state.wall.StreamUrl = "/api/v1/streams/displays/wall"
+	state.unpicked.StreamUrl = "/api/v1/streams/displays/unpicked"
 	web.refreshApiV1DisplayMatches()
 	web.refreshApiV1PostedScore()
 	web.refreshApiV1RealtimeScore()
@@ -298,6 +317,7 @@ func (web *Web) refreshApiV1MatchClock() {
 	web.apiV1Displays.announcer.MatchClock = value
 	web.apiV1Displays.audience.MatchClock = value
 	web.apiV1Displays.allianceStation.MatchClock = value
+	web.apiV1Displays.wall.MatchClock = value
 	web.apiV1Displays.mu.Unlock()
 }
 func (web *Web) refreshApiV1DisplayTiming() {
@@ -307,6 +327,7 @@ func (web *Web) refreshApiV1DisplayTiming() {
 	web.apiV1Displays.announcer.Timing = value
 	web.apiV1Displays.audience.Timing = value
 	web.apiV1Displays.allianceStation.Timing = value
+	web.apiV1Displays.wall.Timing = value
 	web.apiV1Displays.mu.Unlock()
 }
 func (web *Web) refreshApiV1EventStatus() {
@@ -320,6 +341,8 @@ func (web *Web) refreshApiV1AudienceMode() {
 	web.apiV1Displays.mu.Lock()
 	web.apiV1Displays.announcer.AudienceDisplayMode = web.arena.AudienceDisplayMode
 	web.apiV1Displays.audience.DisplayMode = web.arena.AudienceDisplayMode
+	web.apiV1Displays.wall.DisplayMode = web.arena.AudienceDisplayMode
+	web.apiV1Displays.unpicked.DisplayMode = web.arena.AudienceDisplayMode
 	web.apiV1Displays.mu.Unlock()
 }
 
@@ -341,6 +364,7 @@ func (web *Web) refreshApiV1DisplayMatch() {
 	web.apiV1Displays.mu.Lock()
 	web.apiV1Displays.audience.Match = value
 	web.apiV1Displays.allianceStation.Match = value
+	web.apiV1Displays.wall.Match = value
 	web.apiV1Displays.mu.Unlock()
 }
 
@@ -403,6 +427,7 @@ func (web *Web) refreshApiV1AudienceRealtimeScore() {
 	}
 	web.apiV1Displays.mu.Lock()
 	web.apiV1Displays.audience.RealtimeScore = value
+	web.apiV1Displays.wall.RealtimeScore = value
 	web.apiV1Displays.mu.Unlock()
 }
 
@@ -482,6 +507,7 @@ func (web *Web) refreshApiV1AllianceSelection() {
 	}
 	web.apiV1Displays.mu.Lock()
 	web.apiV1Displays.audience.AllianceSelection = value
+	web.apiV1Displays.unpicked.AllianceSelection = value
 	web.apiV1Displays.mu.Unlock()
 }
 
@@ -612,6 +638,16 @@ func (web *Web) apiV1AllianceStationBootstrapHandler(w http.ResponseWriter, r *h
 	defer web.apiV1Displays.mu.RUnlock()
 	writeApiV1Data(w, r, http.StatusOK, web.apiV1Displays.allianceStation, nil)
 }
+func (web *Web) apiV1WallBootstrapHandler(w http.ResponseWriter, r *http.Request) {
+	web.apiV1Displays.mu.RLock()
+	defer web.apiV1Displays.mu.RUnlock()
+	writeApiV1Data(w, r, http.StatusOK, web.apiV1Displays.wall, nil)
+}
+func (web *Web) apiV1UnpickedBootstrapHandler(w http.ResponseWriter, r *http.Request) {
+	web.apiV1Displays.mu.RLock()
+	defer web.apiV1Displays.mu.RUnlock()
+	writeApiV1Data(w, r, http.StatusOK, web.apiV1Displays.unpicked, nil)
+}
 
 func (web *Web) apiV1QueueingStreamHandler(w http.ResponseWriter, r *http.Request) {
 	display, err := web.registerDisplayForPath(r, "/displays/queueing/websocket")
@@ -670,6 +706,36 @@ func (web *Web) apiV1AllianceStationStreamHandler(w http.ResponseWriter, r *http
 	}
 	defer ws.Close()
 	ws.HandleNotifiersV1(display.Notifier, web.apiV1Displays.displayMatch, web.apiV1Displays.realtimeScore, web.apiV1Displays.timing, web.apiV1Displays.matchClock, web.apiV1Displays.allianceStationMode, web.apiV1Displays.stationStatuses, web.apiV1Displays.reload)
+}
+
+func (web *Web) apiV1WallStreamHandler(w http.ResponseWriter, r *http.Request) {
+	display, err := web.registerDisplayForPath(r, "/displays/wall/websocket")
+	if err != nil {
+		handleWebErr(w, err)
+		return
+	}
+	defer web.arena.MarkDisplayDisconnected(display.DisplayConfiguration.Id)
+	ws, err := websocket.NewWebsocket(w, r)
+	if err != nil {
+		return
+	}
+	defer ws.Close()
+	ws.HandleNotifiersV1(display.Notifier, web.apiV1Displays.displayMatch, web.apiV1Displays.audienceRealtime, web.apiV1Displays.timing, web.apiV1Displays.matchClock, web.apiV1Displays.audienceMode, web.apiV1Displays.reload)
+}
+
+func (web *Web) apiV1UnpickedStreamHandler(w http.ResponseWriter, r *http.Request) {
+	display, err := web.registerDisplayForPath(r, "/displays/unpicked/websocket")
+	if err != nil {
+		handleWebErr(w, err)
+		return
+	}
+	defer web.arena.MarkDisplayDisconnected(display.DisplayConfiguration.Id)
+	ws, err := websocket.NewWebsocket(w, r)
+	if err != nil {
+		return
+	}
+	defer ws.Close()
+	ws.HandleNotifiersV1(display.Notifier, web.apiV1Displays.allianceSelection, web.apiV1Displays.audienceMode, web.apiV1Displays.reload)
 }
 
 func apiV1MatchState(state field.MatchState) string {

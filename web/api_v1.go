@@ -112,10 +112,14 @@ func (web *Web) registerApiV1Routes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/displays/announcer/bootstrap", web.apiV1Middleware(http.HandlerFunc(web.apiV1AnnouncerBootstrapHandler)))
 	mux.Handle("GET /api/v1/displays/audience/bootstrap", web.apiV1Middleware(http.HandlerFunc(web.apiV1AudienceBootstrapHandler)))
 	mux.Handle("GET /api/v1/displays/alliance-station/bootstrap", web.apiV1Middleware(http.HandlerFunc(web.apiV1AllianceStationBootstrapHandler)))
+	mux.Handle("GET /api/v1/displays/wall/bootstrap", web.apiV1Middleware(http.HandlerFunc(web.apiV1WallBootstrapHandler)))
+	mux.Handle("GET /api/v1/displays/unpicked/bootstrap", web.apiV1Middleware(http.HandlerFunc(web.apiV1UnpickedBootstrapHandler)))
 	mux.HandleFunc("GET /api/v1/streams/displays/queueing", web.apiV1QueueingStreamHandler)
 	mux.HandleFunc("GET /api/v1/streams/displays/announcer", web.apiV1AnnouncerStreamHandler)
 	mux.HandleFunc("GET /api/v1/streams/displays/audience", web.apiV1AudienceStreamHandler)
 	mux.HandleFunc("GET /api/v1/streams/displays/alliance-station", web.apiV1AllianceStationStreamHandler)
+	mux.HandleFunc("GET /api/v1/streams/displays/wall", web.apiV1WallStreamHandler)
+	mux.HandleFunc("GET /api/v1/streams/displays/unpicked", web.apiV1UnpickedStreamHandler)
 }
 
 func (web *Web) apiV1AdminRead(next http.Handler) http.Handler {
