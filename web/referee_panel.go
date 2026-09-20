@@ -10,13 +10,11 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/Team254/cheesy-arena/field"
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/Team254/cheesy-arena/websocket"
-	"github.com/mitchellh/mapstructure"
 )
 
 // Renders the referee interface for assigning fouls.
@@ -105,100 +103,10 @@ func (web *Web) refereePanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 		}
 
 		switch messageType {
-		case "addFoul":
-			args := struct {
-				Alliance string
-				IsMajor  bool
-			}{}
-			err = mapstructure.Decode(data, &args)
-			if err != nil {
+		case "addFoul", "toggleFoulType", "updateFoulTeam", "updateFoulRule", "deleteFoul", "card":
+			if _, err := web.executeRefereeScoreCommand(messageType, data); err != nil {
 				writeWebsocketError(ws, err.Error())
-				continue
 			}
-
-			// Add the foul to the correct alliance's list.
-			foul := game.Foul{FoulId: web.arena.NextFoulId, IsMajor: args.IsMajor}
-			web.arena.NextFoulId++
-			if args.Alliance == "red" {
-				web.arena.RedRealtimeScore.CurrentScore.Fouls =
-					append(web.arena.RedRealtimeScore.CurrentScore.Fouls, foul)
-			} else {
-				web.arena.BlueRealtimeScore.CurrentScore.Fouls =
-					append(web.arena.BlueRealtimeScore.CurrentScore.Fouls, foul)
-			}
-			web.arena.RealtimeScoreNotifier.Notify()
-		case "toggleFoulType", "updateFoulTeam", "updateFoulRule", "deleteFoul":
-			args := struct {
-				Alliance string
-				Index    int
-				TeamId   int
-				RuleId   int
-			}{}
-			err = mapstructure.Decode(data, &args)
-			if err != nil {
-				writeWebsocketError(ws, err.Error())
-				continue
-			}
-
-			// Find the foul in the correct alliance's list.
-			var fouls *[]game.Foul
-			if args.Alliance == "red" {
-				fouls = &web.arena.RedRealtimeScore.CurrentScore.Fouls
-			} else {
-				fouls = &web.arena.BlueRealtimeScore.CurrentScore.Fouls
-			}
-			if args.Index >= 0 && args.Index < len(*fouls) {
-				switch messageType {
-				case "toggleFoulType":
-					(*fouls)[args.Index].IsMajor = !(*fouls)[args.Index].IsMajor
-					(*fouls)[args.Index].RuleId = 0
-				case "deleteFoul":
-					*fouls = append((*fouls)[:args.Index], (*fouls)[args.Index+1:]...)
-				case "updateFoulTeam":
-					if (*fouls)[args.Index].TeamId == args.TeamId {
-						(*fouls)[args.Index].TeamId = 0
-					} else {
-						(*fouls)[args.Index].TeamId = args.TeamId
-					}
-				case "updateFoulRule":
-					(*fouls)[args.Index].RuleId = args.RuleId
-				}
-				web.arena.RealtimeScoreNotifier.Notify()
-			}
-		case "card":
-			args := struct {
-				Alliance string
-				TeamId   int
-				Card     string
-			}{}
-			err = mapstructure.Decode(data, &args)
-			if err != nil {
-				writeWebsocketError(ws, err.Error())
-				continue
-			}
-
-			// Set the card in the correct alliance's score.
-			var cards map[string]string
-			if args.Alliance == "red" {
-				cards = web.arena.RedRealtimeScore.Cards
-			} else {
-				cards = web.arena.BlueRealtimeScore.Cards
-			}
-			if web.arena.CurrentMatch.Type == model.Playoff {
-				// Cards apply to the whole alliance in playoffs.
-				if args.Alliance == "red" {
-					cards[strconv.Itoa(web.arena.CurrentMatch.Red1)] = args.Card
-					cards[strconv.Itoa(web.arena.CurrentMatch.Red2)] = args.Card
-					cards[strconv.Itoa(web.arena.CurrentMatch.Red3)] = args.Card
-				} else {
-					cards[strconv.Itoa(web.arena.CurrentMatch.Blue1)] = args.Card
-					cards[strconv.Itoa(web.arena.CurrentMatch.Blue2)] = args.Card
-					cards[strconv.Itoa(web.arena.CurrentMatch.Blue3)] = args.Card
-				}
-			} else {
-				cards[strconv.Itoa(args.TeamId)] = args.Card
-			}
-			web.arena.RealtimeScoreNotifier.Notify()
 		case "toggleBypass":
 			station, ok := data.(string)
 			if !ok {

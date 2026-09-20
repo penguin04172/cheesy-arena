@@ -737,6 +737,35 @@ paths:
               schema: {$ref: "#/components/schemas/RefereeFoulsResponse"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
+  /admin/referee/commands:
+    post:
+      operationId: executeRefereeCommand
+      summary: Add or edit fouls and cards
+      description: Admin session, CSRF token and Idempotency-Key are required. Allowed commands are addFoul, toggleFoulType, updateFoulTeam, updateFoulRule, deleteFoul and card. Mutations are rejected during timeout or after the alliance fouls are committed. A repeated key with the same command and payload replays the original result without repeating the mutation.
+      security: [{sessionCookie: []}]
+      parameters:
+        - {in: header, name: X-CSRF-Token, required: true, schema: {type: string}}
+        - {in: header, name: Idempotency-Key, required: true, schema: {type: string, maxLength: 128}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [command, payload]
+              properties:
+                command: {type: string, enum: [addFoul, toggleFoulType, updateFoulTeam, updateFoulRule, deleteFoul, card]}
+                payload:
+                  type: object
+                  description: Alliance is red or blue; other fields are isMajor, index, teamId, ruleId or card according to command.
+      responses:
+        "200": {description: Command accepted or safely replayed}
+        "400": {description: Malformed or unknown command}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "409": {description: Idempotency key reused or fouls committed}
+        "422": {description: Invalid command value or match state}
   /admin/alliance-selection/bootstrap:
     get:
       operationId: getAllianceSelectionControlBootstrap

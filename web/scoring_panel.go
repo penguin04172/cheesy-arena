@@ -162,27 +162,9 @@ func (web *Web) scoringPanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 				scoreChanged = true
 			}
 		} else if command == "addFoul" {
-			args := struct {
-				Alliance string
-				IsMajor  bool
-			}{}
-			err = mapstructure.Decode(data, &args)
-			if err != nil {
+			if _, err := web.executeRefereeScoreCommand(command, data); err != nil {
 				writeWebsocketError(ws, err.Error())
-				continue
 			}
-
-			// Add the foul to the correct alliance's list.
-			foul := game.Foul{FoulId: web.arena.NextFoulId, IsMajor: args.IsMajor}
-			web.arena.NextFoulId++
-			if args.Alliance == "red" {
-				web.arena.RedRealtimeScore.CurrentScore.Fouls =
-					append(web.arena.RedRealtimeScore.CurrentScore.Fouls, foul)
-			} else {
-				web.arena.BlueRealtimeScore.CurrentScore.Fouls =
-					append(web.arena.BlueRealtimeScore.CurrentScore.Fouls, foul)
-			}
-			web.arena.RealtimeScoreNotifier.Notify()
 		}
 
 		if scoreChanged {

@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"text/template"
 
 	"github.com/Team254/cheesy-arena/field"
@@ -30,6 +31,7 @@ type Web struct {
 	apiV1State                *apiV1State
 	apiV1Displays             *apiV1DisplayState
 	allianceSelectionCommands *allianceSelectionCommandState
+	refereeCommandMu          sync.Mutex
 }
 
 func NewWeb(arena *field.Arena) *Web {

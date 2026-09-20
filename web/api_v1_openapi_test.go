@@ -56,6 +56,7 @@ func TestApiV1OpenApiDocument(t *testing.T) {
 		"/admin/publishing/{resource}",
 		"/admin/match-play/matches",
 		"/admin/referee/fouls",
+		"/admin/referee/commands",
 		"/admin/alliance-selection/bootstrap",
 		"/admin/alliance-selection/commands",
 		"/admin/match-play/bootstrap",
