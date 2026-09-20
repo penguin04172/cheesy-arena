@@ -1010,7 +1010,8 @@ paths:
   /streams/admin/referee:
     get:
       operationId: streamRefereePanel
-      summary: Upgrade to the sequenced referee panel read-model stream
+      summary: Upgrade to the sequenced referee panel stream
+      description: Client may send type=command with data containing requestId, idempotencyKey, csrfToken, command and payload. Server replies with type=commandResult, the same requestId, changed/foulId/replayed fields and optional error code. Command responses have sequence 0 and do not affect read-model event sequences. The CSRF token must match the csrf_token cookie. Commands and validation match POST /admin/referee/commands.
       security: [{sessionCookie: []}]
       x-websocket: true
       responses:

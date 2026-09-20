@@ -1277,6 +1277,7 @@ func (web *Web) apiV1RefereePanelStreamHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 	defer ws.Close()
+	go web.handleRefereeV1Commands(ws, r)
 	ws.HandleNotifiersV1(web.apiV1Displays.displayMatch, web.apiV1Displays.matchClock, web.apiV1Displays.controlRealtimeScore, web.apiV1Displays.scoringStatus, web.apiV1Displays.stationStatuses)
 }
 func (web *Web) apiV1FieldTestingStreamHandler(w http.ResponseWriter, r *http.Request) {
