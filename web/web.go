@@ -25,14 +25,15 @@ const (
 )
 
 type Web struct {
-	arena           *field.Arena
-	templateHelpers template.FuncMap
-	apiV1State      *apiV1State
-	apiV1Displays   *apiV1DisplayState
+	arena                     *field.Arena
+	templateHelpers           template.FuncMap
+	apiV1State                *apiV1State
+	apiV1Displays             *apiV1DisplayState
+	allianceSelectionCommands *allianceSelectionCommandState
 }
 
 func NewWeb(arena *field.Arena) *Web {
-	web := &Web{arena: arena, apiV1State: newApiV1State()}
+	web := &Web{arena: arena, apiV1State: newApiV1State(), allianceSelectionCommands: newAllianceSelectionCommandState()}
 
 	// Helper functions that can be used inside templates.
 	web.templateHelpers = template.FuncMap{

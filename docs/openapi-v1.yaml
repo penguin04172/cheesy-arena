@@ -746,6 +746,33 @@ paths:
         "200": {description: Alliance selection timer, rankings, and audience display mode snapshot}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
+  /admin/alliance-selection/commands:
+    post:
+      operationId: executeAllianceSelectionCommand
+      summary: Control the alliance selection timer or audience display
+      description: Admin session, CSRF token and Idempotency-Key are required. A repeated key with the same command and value returns replayed=true without repeating side effects. Timer commands are setTimer (0–3600 seconds), startTimer, stopTimer, restartTimer and hideTimer. Display command is setAudienceDisplay.
+      security: [{sessionCookie: []}]
+      parameters:
+        - {in: header, name: X-CSRF-Token, required: true, schema: {type: string}}
+        - {in: header, name: Idempotency-Key, required: true, schema: {type: string, maxLength: 128}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [command]
+              properties:
+                command: {type: string, enum: [setTimer, startTimer, stopTimer, restartTimer, hideTimer, setAudienceDisplay]}
+                value: {oneOf: [{type: integer, minimum: 0, maximum: 3600}, {type: string}]}
+      responses:
+        "200": {description: Command accepted or safely replayed}
+        "400": {description: Malformed command or missing idempotency key}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "409": {description: Idempotency key reused for a different command}
+        "422": {description: Invalid command value}
   /admin/match-play/bootstrap:
     get:
       operationId: getMatchPlayControlBootstrap

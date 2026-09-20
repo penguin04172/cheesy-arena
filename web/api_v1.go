@@ -106,6 +106,7 @@ func (web *Web) registerApiV1Routes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/admin/match-play/matches", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AdminMatchPlayMatchesHandler)))
 	mux.Handle("GET /api/v1/admin/referee/fouls", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AdminRefereeFoulsHandler)))
 	mux.Handle("GET /api/v1/admin/alliance-selection/bootstrap", web.apiV1AdminRead(http.HandlerFunc(web.apiV1AllianceSelectionControlBootstrapHandler)))
+	mux.Handle("POST /api/v1/admin/alliance-selection/commands", web.apiV1AdminMutation(http.HandlerFunc(web.apiV1AllianceSelectionCommandHandler)))
 	mux.Handle("GET /api/v1/admin/match-play/bootstrap", web.apiV1AdminRead(http.HandlerFunc(web.apiV1MatchPlayBootstrapHandler)))
 	mux.Handle("GET /api/v1/admin/scoring/{position}/bootstrap", web.apiV1AdminRead(http.HandlerFunc(web.apiV1ScoringPanelBootstrapHandler)))
 	mux.Handle("GET /api/v1/admin/referee/bootstrap", web.apiV1AdminRead(http.HandlerFunc(web.apiV1RefereePanelBootstrapHandler)))
