@@ -69,6 +69,10 @@ func (ws *Websocket) Close() error {
 	return ws.conn.Close()
 }
 
+func (ws *Websocket) SetReadLimit(limit int64) {
+	ws.conn.SetReadLimit(limit)
+}
+
 func (ws *Websocket) Read() (string, any, error) {
 	var message Message
 	err := ws.conn.ReadJSON(&message)
@@ -137,6 +141,12 @@ func (ws *Websocket) writeV1(messageType string, data any, sequence uint64, boot
 		Data: data,
 		Meta: V1MessageMeta{Version: V1ProtocolVersion, Sequence: sequence, Bootstrap: bootstrap, SentAt: time.Now().UTC().Format(time.RFC3339Nano)},
 	})
+}
+
+// WriteV1CommandResult sends a response to a client command without consuming
+// an event sequence, which remains reserved for server-state notifications.
+func (ws *Websocket) WriteV1CommandResult(data any) error {
+	return ws.writeV1("commandResult", data, 0, false)
 }
 
 // HandleNotifiersV1 sends typed bootstrap snapshots followed by sequenced events. Sequences are scoped to each event

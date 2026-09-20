@@ -1236,6 +1236,7 @@ func (web *Web) apiV1AllianceSelectionControlStreamHandler(w http.ResponseWriter
 		return
 	}
 	defer ws.Close()
+	go web.handleAllianceSelectionV1Commands(ws, r)
 	ws.HandleNotifiersV1(web.apiV1Displays.allianceSelection, web.apiV1Displays.audienceMode)
 }
 func (web *Web) apiV1MatchPlayStreamHandler(w http.ResponseWriter, r *http.Request) {

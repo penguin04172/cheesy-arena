@@ -954,7 +954,8 @@ paths:
   /streams/admin/alliance-selection:
     get:
       operationId: streamAllianceSelectionControl
-      summary: Upgrade to the sequenced alliance selection control read-model stream
+      summary: Upgrade to the sequenced alliance selection control stream
+      description: Client may send type=command with data containing requestId, idempotencyKey, csrfToken, command and optional value. Server replies with type=commandResult, the same requestId, replayed flag and optional error code; command responses have sequence 0 and do not affect read-model event sequences. The CSRF token must match the csrf_token cookie. Commands and validation match POST /admin/alliance-selection/commands.
       security: [{sessionCookie: []}]
       x-websocket: true
       responses:

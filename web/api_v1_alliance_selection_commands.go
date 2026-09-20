@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 )
 
 type apiV1AllianceSelectionCommandInput struct {
@@ -16,6 +17,32 @@ type apiV1AllianceSelectionCommandInput struct {
 type apiV1AllianceSelectionCommandResult struct {
 	Command  string `json:"command"`
 	Replayed bool   `json:"replayed"`
+}
+
+var errAllianceSelectionKeyReused = errors.New("idempotency key reused")
+
+func (web *Web) executeAllianceSelectionIdempotent(key, command string, value any) (bool, error) {
+	if strings.TrimSpace(key) == "" || len(key) > 128 {
+		return false, errInvalidAllianceSelectionValue
+	}
+	canonical, err := json.Marshal(value)
+	if err != nil {
+		return false, errInvalidAllianceSelectionValue
+	}
+	operation := "alliance-selection:" + command + ":" + string(canonical)
+	web.apiV1State.idempotencyMu.Lock()
+	defer web.apiV1State.idempotencyMu.Unlock()
+	if previous, found := web.apiV1State.idempotency[key]; found {
+		if previous.Operation != operation {
+			return false, errAllianceSelectionKeyReused
+		}
+		return true, nil
+	}
+	if err := web.executeAllianceSelectionCommand(command, value); err != nil {
+		return false, err
+	}
+	web.apiV1State.idempotency[key] = apiV1IdempotencyRecord{Operation: operation}
+	return false, nil
 }
 
 // Commands require admin session, CSRF token and an idempotency key. The key
@@ -37,29 +64,23 @@ func (web *Web) apiV1AllianceSelectionCommandHandler(w http.ResponseWriter, r *h
 			return
 		}
 	}
-	operation := "alliance-selection:" + input.Command + ":" + string(input.Value)
-	web.apiV1State.idempotencyMu.Lock()
-	defer web.apiV1State.idempotencyMu.Unlock()
-	if previous, found := web.apiV1State.idempotency[key]; found {
-		if previous.Operation != operation {
-			writeApiV1Error(w, r, http.StatusConflict, "idempotency_key_reused", "Idempotency key was already used for another operation.", nil)
-			return
-		}
-		web.logApiV1Audit(r, "alliance-selection."+input.Command, "timer/display", "replayed")
-		writeApiV1Data(w, r, http.StatusOK, apiV1AllianceSelectionCommandResult{Command: input.Command, Replayed: true}, nil)
-		return
-	}
-	if err := web.executeAllianceSelectionCommand(input.Command, value); err != nil {
+	replayed, err := web.executeAllianceSelectionIdempotent(key, input.Command, value)
+	if err != nil {
 		if errors.Is(err, errInvalidAllianceSelectionCommand) {
 			writeApiV1Error(w, r, http.StatusBadRequest, "unknown_command", "Unknown alliance selection command.", nil)
+		} else if errors.Is(err, errAllianceSelectionKeyReused) {
+			writeApiV1Error(w, r, http.StatusConflict, "idempotency_key_reused", "Idempotency key was already used for another operation.", nil)
 		} else {
 			writeApiV1Error(w, r, http.StatusUnprocessableEntity, "invalid_command_value", "Invalid alliance selection command value.", nil)
 		}
 		web.logApiV1Audit(r, "alliance-selection."+input.Command, "timer/display", "rejected")
 		return
 	}
-	result := apiV1AllianceSelectionCommandResult{Command: input.Command}
-	web.apiV1State.idempotency[key] = apiV1IdempotencyRecord{Operation: operation, Data: result}
-	web.logApiV1Audit(r, "alliance-selection."+input.Command, "timer/display", "success")
+	result := apiV1AllianceSelectionCommandResult{Command: input.Command, Replayed: replayed}
+	auditResult := "success"
+	if replayed {
+		auditResult = "replayed"
+	}
+	web.logApiV1Audit(r, "alliance-selection."+input.Command, "timer/display", auditResult)
 	writeApiV1Data(w, r, http.StatusOK, result, nil)
 }
