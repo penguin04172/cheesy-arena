@@ -233,15 +233,8 @@ func (web *Web) matchPlayWebsocketHandler(w http.ResponseWriter, r *http.Request
 				continue
 			}
 		case "toggleBypass":
-			station, ok := data.(string)
-			if !ok {
-				writeWebsocketError(ws, fmt.Sprintf("Failed to parse '%s' message.", messageType))
-				continue
-			}
-			err = web.arena.ToggleBypass(station)
-			if err != nil {
+			if err := web.executeMatchPlayControlCommand(messageType, data); err != nil {
 				writeWebsocketError(ws, err.Error())
-				continue
 			}
 		case "startMatch":
 			args := struct {
@@ -264,10 +257,10 @@ func (web *Web) matchPlayWebsocketHandler(w http.ResponseWriter, r *http.Request
 				writeWebsocketError(ws, err.Error())
 				continue
 			}
-		case "signalVolunteers":
-			web.arena.SignalVolunteers()
-		case "signalReset":
-			web.arena.SignalReset()
+		case "signalVolunteers", "signalReset":
+			if err := web.executeMatchPlayControlCommand(messageType, data); err != nil {
+				writeWebsocketError(ws, err.Error())
+			}
 		case "commitAndPost":
 			err = web.commitPostAndLoadNextMatch()
 			if err != nil {
@@ -285,73 +278,10 @@ func (web *Web) matchPlayWebsocketHandler(w http.ResponseWriter, r *http.Request
 				writeWebsocketError(ws, err.Error())
 				continue
 			}
-		case "setAudienceDisplay":
-			mode, ok := data.(string)
-			if !ok {
-				writeWebsocketError(ws, fmt.Sprintf("Failed to parse '%s' message.", messageType))
-				continue
-			}
-			web.arena.SetAudienceDisplayMode(mode)
-		case "setAllianceStationDisplay":
-			mode, ok := data.(string)
-			if !ok {
-				writeWebsocketError(ws, fmt.Sprintf("Failed to parse '%s' message.", messageType))
-				continue
-			}
-			web.arena.SetAllianceStationDisplayMode(mode)
-		case "startTimeout":
-			var timeoutSettings struct {
-				Description   string
-				NextMatchName string
-				DurationSec   float64
-			}
-			durationSec, ok := data.(float64)
-			if ok {
-				timeoutSettings.Description = defaultTimeoutDescription
-				timeoutSettings.DurationSec = durationSec
-			} else {
-				err = mapstructure.Decode(data, &timeoutSettings)
-				if err != nil || timeoutSettings.DurationSec == 0 {
-					writeWebsocketError(ws, fmt.Sprintf("Failed to parse '%s' message.", messageType))
-					continue
-				}
-				if timeoutSettings.Description == "" {
-					timeoutSettings.Description = defaultTimeoutDescription
-				}
-			}
-			err = web.arena.StartAdHocTimeout(
-				timeoutSettings.Description, timeoutSettings.NextMatchName, int(timeoutSettings.DurationSec),
-			)
-			if err != nil {
+		case "setAudienceDisplay", "setAllianceStationDisplay", "startTimeout", "setTimeoutDisplay", "setTestMatchName":
+			if err := web.executeMatchPlayControlCommand(messageType, data); err != nil {
 				writeWebsocketError(ws, err.Error())
-				continue
 			}
-		case "setTimeoutDisplay":
-			var timeoutSettings struct {
-				Description   string
-				NextMatchName string
-			}
-			err = mapstructure.Decode(data, &timeoutSettings)
-			if err != nil {
-				ws.WriteError(fmt.Sprintf("Failed to parse '%s' message.", messageType))
-				continue
-			}
-			if timeoutSettings.Description == "" {
-				timeoutSettings.Description = defaultTimeoutDescription
-			}
-			web.arena.SetTimeoutDisplay(timeoutSettings.Description, timeoutSettings.NextMatchName)
-		case "setTestMatchName":
-			if web.arena.CurrentMatch.Type != model.Test {
-				// Don't allow changing the name of a non-test match.
-				continue
-			}
-			name, ok := data.(string)
-			if !ok {
-				writeWebsocketError(ws, fmt.Sprintf("Failed to parse '%s' message.", messageType))
-				continue
-			}
-			web.arena.CurrentMatch.LongName = name
-			web.arena.MatchLoadNotifier.Notify()
 		default:
 			writeWebsocketError(ws, fmt.Sprintf("Invalid message type '%s'.", messageType))
 		}

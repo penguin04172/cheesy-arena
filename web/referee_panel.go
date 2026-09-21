@@ -108,20 +108,13 @@ func (web *Web) refereePanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 				writeWebsocketError(ws, err.Error())
 			}
 		case "toggleBypass":
-			station, ok := data.(string)
-			if !ok {
-				writeWebsocketError(ws, fmt.Sprintf("Failed to parse '%s' message.", messageType))
-				continue
-			}
-			err = web.arena.ToggleBypass(station)
-			if err != nil {
+			if err := web.executeMatchPlayControlCommand(messageType, data); err != nil {
 				writeWebsocketError(ws, err.Error())
-				continue
 			}
-		case "signalVolunteers":
-			web.arena.SignalVolunteers()
-		case "signalReset":
-			web.arena.SignalReset()
+		case "signalVolunteers", "signalReset":
+			if err := web.executeMatchPlayControlCommand(messageType, data); err != nil {
+				writeWebsocketError(ws, err.Error())
+			}
 		case "commitAndPost":
 			if web.arena.MatchState != field.PostMatch {
 				// Don't allow committing the fouls until the match is over.

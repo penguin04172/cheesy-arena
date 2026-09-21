@@ -811,6 +811,34 @@ paths:
         "200": {description: Match, arena readiness, score, display mode, and scoring commit snapshot}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
+  /admin/match-play/commands:
+    post:
+      operationId: executeMatchPlayControlCommand
+      summary: Execute a non-scoring match play field-control command
+      description: Admin session, CSRF token and Idempotency-Key are required. Currently supports setAudienceDisplay, setAllianceStationDisplay, toggleBypass, signalVolunteers, signalReset, startTimeout, setTimeoutDisplay and setTestMatchName. Repeating the same key and command/value returns replayed=true without reapplying the mutation. Match start, abort, result post and match advancement are not yet exposed.
+      security: [{sessionCookie: []}]
+      parameters:
+        - {in: header, name: X-CSRF-Token, required: true, schema: {type: string}}
+        - {in: header, name: Idempotency-Key, required: true, schema: {type: string, maxLength: 128}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [command]
+              properties:
+                command: {type: string, enum: [setAudienceDisplay, setAllianceStationDisplay, toggleBypass, signalVolunteers, signalReset, startTimeout, setTimeoutDisplay, setTestMatchName]}
+                value: {}
+      responses:
+        "200": {description: Command accepted or safely replayed}
+        "400": {description: Malformed or unknown command}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "409": {description: Idempotency key reused or command disallowed in current state}
+        "422": {description: Invalid command value}
+        "503": {description: Field command failed without leaking internal details}
   /admin/scoring/{position}/bootstrap:
     get:
       operationId: getScoringPanelBootstrap

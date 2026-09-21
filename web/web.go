@@ -32,6 +32,7 @@ type Web struct {
 	apiV1Displays             *apiV1DisplayState
 	allianceSelectionCommands *allianceSelectionCommandState
 	refereeCommandMu          sync.Mutex
+	matchPlayControlMu        sync.Mutex
 }
 
 func NewWeb(arena *field.Arena) *Web {
