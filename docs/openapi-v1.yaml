@@ -1105,7 +1105,8 @@ paths:
   /streams/admin/field-testing:
     get:
       operationId: streamFieldTesting
-      summary: Upgrade to the sequenced PLC, match-state, and LED read-model stream
+      summary: Upgrade to the sequenced PLC, match-state, and LED stream
+      description: Client may send type=command with data containing requestId, idempotencyKey, csrfToken, command and optional value. Server replies with type=commandResult, the same requestId, replayed flag and optional error code. Command responses have sequence 0 and do not affect read-model event sequences. The CSRF token must match the csrf_token cookie. Supported commands match POST /admin/field-testing/commands.
       security: [{sessionCookie: []}]
       x-websocket: true
       responses:

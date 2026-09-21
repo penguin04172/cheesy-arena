@@ -1306,6 +1306,7 @@ func (web *Web) apiV1FieldTestingStreamHandler(w http.ResponseWriter, r *http.Re
 			}
 		}
 	}()
+	go web.handleFieldTestingV1Commands(ws, r)
 	ws.HandleNotifiersV1(web.apiV1Displays.fieldTestingPlc, web.apiV1Displays.fieldTestingMatchState, web.apiV1Displays.fieldTestingLed)
 }
 
