@@ -1248,6 +1248,7 @@ func (web *Web) apiV1MatchPlayStreamHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	defer ws.Close()
+	go web.handleMatchPlayV1ControlCommands(ws, r)
 	ws.HandleNotifiersV1(web.apiV1Displays.matchPlayMatch, web.apiV1Displays.matchPlayArenaStatus,
 		web.apiV1Displays.audienceMode, web.apiV1Displays.allianceStationMode, web.apiV1Displays.eventStatus,
 		web.apiV1Displays.audienceRealtime, web.apiV1Displays.audiencePosted, web.apiV1Displays.scoringStatus,

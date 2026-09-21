@@ -14,7 +14,7 @@ import (
 
 func readAllianceSelectionV1Message(t *testing.T, conn *gorillawebsocket.Conn, want string) map[string]any {
 	t.Helper()
-	for i := 0; i < 8; i++ {
+	for i := 0; i < 32; i++ {
 		require.NoError(t, conn.SetReadDeadline(time.Now().Add(3*time.Second)))
 		var message map[string]any
 		require.NoError(t, conn.ReadJSON(&message))
