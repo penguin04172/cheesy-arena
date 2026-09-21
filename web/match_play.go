@@ -204,6 +204,20 @@ func (web *Web) commitMatchScore(match *model.Match, matchResult *model.MatchRes
 
 	if match.Type != model.Test {
 		if matchResult.PlayNumber == 0 {
+			// A retry after the result row was saved must update that row instead
+			// of creating a second play for the same field start.
+			if !isMatchReviewEdit && matchResult.PostAttemptId != "" {
+				priorAttempt, err := web.arena.Database.GetMatchResultByPostAttemptId(match.Id, matchResult.PostAttemptId)
+				if err != nil {
+					return err
+				}
+				if priorAttempt != nil {
+					matchResult.Id = priorAttempt.Id
+					matchResult.PlayNumber = priorAttempt.PlayNumber
+				}
+			}
+		}
+		if matchResult.PlayNumber == 0 {
 			// Determine the play number for this new match result.
 			prevMatchResult, err := web.arena.Database.GetMatchResultForMatch(match.Id)
 			if err != nil {
@@ -320,7 +334,7 @@ func (web *Web) commitMatchScore(match *model.Match, matchResult *model.MatchRes
 }
 
 func (web *Web) getCurrentMatchResult() *model.MatchResult {
-	return &model.MatchResult{
+	result := &model.MatchResult{
 		MatchId:   web.arena.CurrentMatch.Id,
 		MatchType: web.arena.CurrentMatch.Type,
 		RedScore:  &web.arena.RedRealtimeScore.CurrentScore,
@@ -328,6 +342,10 @@ func (web *Web) getCurrentMatchResult() *model.MatchResult {
 		RedCards:  web.arena.RedRealtimeScore.Cards,
 		BlueCards: web.arena.BlueRealtimeScore.Cards,
 	}
+	if web.arena.CurrentMatch.Id > 0 && !web.arena.CurrentMatch.StartedAt.IsZero() {
+		result.PostAttemptId = fmt.Sprintf("%d:%s", web.arena.CurrentMatch.Id, web.arena.CurrentMatch.StartedAt.UTC().Format(time.RFC3339Nano))
+	}
+	return result
 }
 
 // Saves the realtime result as the final score for the match currently loaded into the arena.

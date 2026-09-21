@@ -10,14 +10,15 @@ import (
 )
 
 type MatchResult struct {
-	Id         int `db:"id"`
-	MatchId    int
-	PlayNumber int
-	MatchType  MatchType
-	RedScore   *game.Score
-	BlueScore  *game.Score
-	RedCards   map[string]string
-	BlueCards  map[string]string
+	Id            int `db:"id"`
+	MatchId       int
+	PlayNumber    int
+	PostAttemptId string
+	MatchType     MatchType
+	RedScore      *game.Score
+	BlueScore     *game.Score
+	RedCards      map[string]string
+	BlueCards     map[string]string
 }
 
 // Returns a new match result object with empty slices instead of nil.
@@ -48,6 +49,24 @@ func (database *Database) GetMatchResultForMatch(matchId int) (*MatchResult, err
 		}
 	}
 	return mostRecentMatchResult, nil
+}
+
+// GetMatchResultByPostAttemptId finds a result written by a particular field
+// play attempt. The identifier is empty for legacy records and review edits.
+func (database *Database) GetMatchResultByPostAttemptId(matchId int, attemptId string) (*MatchResult, error) {
+	if attemptId == "" {
+		return nil, nil
+	}
+	results, err := database.matchResultTable.getAll()
+	if err != nil {
+		return nil, err
+	}
+	for i := range results {
+		if results[i].MatchId == matchId && results[i].PostAttemptId == attemptId {
+			return &results[i], nil
+		}
+	}
+	return nil, nil
 }
 
 func (database *Database) UpdateMatchResult(matchResult *MatchResult) error {
