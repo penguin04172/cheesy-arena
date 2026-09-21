@@ -8,10 +8,8 @@ package web
 import (
 	"fmt"
 	"github.com/Team254/cheesy-arena/field"
-	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/Team254/cheesy-arena/websocket"
-	"github.com/mitchellh/mapstructure"
 	"io"
 	"log"
 	"net/http"
@@ -70,17 +68,10 @@ func (web *Web) scoringPanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	position := r.PathValue("position")
-	parameters, ok := positionParameters[position]
+	_, ok := positionParameters[position]
 	if !ok {
 		handleWebErr(w, fmt.Errorf("Invalid position '%s'.", position))
 		return
-	}
-
-	var realtimeScore **field.RealtimeScore
-	if parameters.Alliance == "red" {
-		realtimeScore = &web.arena.RedRealtimeScore
-	} else {
-		realtimeScore = &web.arena.BlueRealtimeScore
 	}
 
 	ws, err := websocket.NewWebsocket(w, r)
@@ -116,9 +107,6 @@ func (web *Web) scoringPanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 			log.Println(err)
 			return
 		}
-		score := &(*realtimeScore).CurrentScore
-		scoreChanged := false
-
 		if command == "commitMatch" {
 			if web.arena.MatchState != field.PostMatch {
 				// Don't allow committing the score until the match is over.
@@ -127,48 +115,13 @@ func (web *Web) scoringPanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 			}
 			web.arena.ScoringPanelRegistry.SetScoreCommitted(position, ws)
 			web.arena.ScoringStatusNotifier.Notify()
-		} else if command == "autoTower" {
-			args := struct {
-				TeamPosition    int
-				AutoTowerStatus int
-			}{}
-			err = mapstructure.Decode(data, &args)
-			if err != nil {
-				writeWebsocketError(ws, err.Error())
-				continue
-			}
-
-			if args.TeamPosition >= 1 && args.TeamPosition <= 3 && args.AutoTowerStatus >= 0 &&
-				args.AutoTowerStatus <= 3 {
-				autoTowerStatus := game.TowerStatus(args.AutoTowerStatus)
-				score.AutoTowerStatuses[args.TeamPosition-1] = autoTowerStatus
-				scoreChanged = true
-			}
-		} else if command == "endgame" {
-			args := struct {
-				TeamPosition       int
-				EndgameTowerStatus int
-			}{}
-			err = mapstructure.Decode(data, &args)
-			if err != nil {
-				writeWebsocketError(ws, err.Error())
-				continue
-			}
-
-			if args.TeamPosition >= 1 && args.TeamPosition <= 3 && args.EndgameTowerStatus >= 0 &&
-				args.EndgameTowerStatus <= 3 {
-				endgameStatus := game.TowerStatus(args.EndgameTowerStatus)
-				score.EndgameTowerStatuses[args.TeamPosition-1] = endgameStatus
-				scoreChanged = true
-			}
+		} else if command == "autoTower" || command == "endgame" {
+			// Legacy clients expect out-of-range tower inputs to be silently ignored.
+			_, _ = web.executeScoringTowerCommand(position, command, data)
 		} else if command == "addFoul" {
 			if _, err := web.executeRefereeScoreCommand(command, data); err != nil {
 				writeWebsocketError(ws, err.Error())
 			}
-		}
-
-		if scoreChanged {
-			web.arena.RealtimeScoreNotifier.Notify()
 		}
 	}
 }
