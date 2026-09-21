@@ -1267,6 +1267,7 @@ func (web *Web) apiV1ScoringPanelStreamHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 	defer ws.Close()
+	go web.handleScoringV1TowerCommands(ws, r, r.PathValue("position"))
 	ws.HandleNotifiersV1(web.apiV1Displays.displayMatch, web.apiV1Displays.matchClock, web.apiV1Displays.controlRealtimeScore)
 }
 func (web *Web) apiV1RefereePanelStreamHandler(w http.ResponseWriter, r *http.Request) {

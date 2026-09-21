@@ -1058,7 +1058,8 @@ paths:
   /streams/admin/scoring/{position}:
     get:
       operationId: streamScoringPanel
-      summary: Upgrade to a sequenced scoring panel read-model stream
+      summary: Upgrade to a sequenced scoring panel stream
+      description: Client may send type=command with data containing requestId, idempotencyKey, csrfToken, command and payload. Server replies with type=commandResult, the same requestId, changed/replayed fields and optional error code. Command responses have sequence 0 and do not affect read-model event sequences. The CSRF token must match the csrf_token cookie. Supported tower commands match POST /admin/scoring/{position}/commands; panel commit is not yet exposed.
       security: [{sessionCookie: []}]
       x-websocket: true
       parameters:
