@@ -12,7 +12,6 @@ import (
 	"github.com/Team254/cheesy-arena/led"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/Team254/cheesy-arena/websocket"
-	"github.com/mitchellh/mapstructure"
 	"io"
 	"log"
 	"net/http"
@@ -117,64 +116,10 @@ func (web *Web) fieldTestingWebsocketHandler(w http.ResponseWriter, r *http.Requ
 		}
 
 		switch messageType {
-		case "playSound":
-			sound, ok := data.(string)
-			if !ok {
-				writeWebsocketError(ws, fmt.Sprintf("Failed to parse '%s' message.", messageType))
-				continue
+		case "playSound", "setPlcCoilOverride", "setLedMode":
+			if err := web.executeFieldTestingCommand(messageType, data); err != nil {
+				writeWebsocketError(ws, err.Error())
 			}
-			web.arena.PlaySoundNotifier.NotifyWithMessage(sound)
-		case "setPlcCoilOverride":
-			args := struct {
-				Index    int
-				Override string
-			}{}
-			err = mapstructure.Decode(data, &args)
-			if err != nil {
-				ws.WriteError(err.Error())
-				continue
-			}
-			if !fieldTestingOverridesAllowed(web.arena.MatchState) {
-				ws.WriteError(fieldTestingOverrideDisabledMessage)
-				continue
-			}
-
-			switch args.Override {
-			case "auto":
-				web.arena.Plc.ClearCoilOverride(args.Index)
-			case "on":
-				web.arena.Plc.SetCoilOverride(args.Index, true)
-			case "off":
-				web.arena.Plc.SetCoilOverride(args.Index, false)
-			default:
-				ws.WriteError(fmt.Sprintf("Invalid coil override state '%s'.", args.Override))
-				continue
-			}
-			web.arena.Plc.IoChangeNotifier().Notify()
-		case "setLedMode":
-			args := struct {
-				RedMode  led.Mode
-				BlueMode led.Mode
-			}{}
-			err = mapstructure.Decode(data, &args)
-			if err != nil {
-				ws.WriteError(err.Error())
-				continue
-			}
-			if !fieldTestingOverridesAllowed(web.arena.MatchState) {
-				ws.WriteError(fieldTestingLedModeDisabledMessage)
-				continue
-			}
-			if _, ok := led.ModeNames[args.RedMode]; !ok {
-				ws.WriteError(fmt.Sprintf("Invalid LED mode '%d'.", args.RedMode))
-				continue
-			}
-			if _, ok := led.ModeNames[args.BlueMode]; !ok {
-				ws.WriteError(fmt.Sprintf("Invalid LED mode '%d'.", args.BlueMode))
-				continue
-			}
-
-			web.arena.Leds.SetMode(args.RedMode, args.BlueMode)
 		default:
 			writeWebsocketError(ws, fmt.Sprintf("Invalid message type '%s'.", messageType))
 			continue

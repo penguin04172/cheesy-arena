@@ -892,6 +892,33 @@ paths:
       security: [{sessionCookie: []}]
       responses:
         "200": {description: Field-testing read-model snapshot}
+  /admin/field-testing/commands:
+    post:
+      operationId: executeFieldTestingCommand
+      summary: Play a test sound or control PLC coil override and LED mode
+      description: Admin session, CSRF token and Idempotency-Key are required. Commands are playSound, setPlcCoilOverride and setLedMode. Coil and LED overrides are forbidden during a live match. Repeating the same key/command/value replays the original result without repeating the hardware operation.
+      security: [{sessionCookie: []}]
+      parameters:
+        - {in: header, name: X-CSRF-Token, required: true, schema: {type: string}}
+        - {in: header, name: Idempotency-Key, required: true, schema: {type: string, maxLength: 128}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [command]
+              properties:
+                command: {type: string, enum: [playSound, setPlcCoilOverride, setLedMode]}
+                value: {}
+      responses:
+        "200": {description: Command accepted or safely replayed}
+        "400": {description: Malformed or unknown command}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "409": {description: Idempotency key reused or override disallowed during a match}
+        "422": {description: Invalid sound, coil, override or LED mode}
   /displays/queueing/matches:
     get:
       operationId: listQueueingDisplayMatches

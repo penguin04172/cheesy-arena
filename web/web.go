@@ -34,6 +34,7 @@ type Web struct {
 	refereeCommandMu          sync.Mutex
 	matchPlayControlMu        sync.Mutex
 	matchPlayLifecycleMu      sync.Mutex
+	fieldTestingCommandMu     sync.Mutex
 }
 
 func NewWeb(arena *field.Arena) *Web {
