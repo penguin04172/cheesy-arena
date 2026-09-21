@@ -12,7 +12,6 @@ import (
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/Team254/cheesy-arena/tournament"
 	"github.com/Team254/cheesy-arena/websocket"
-	"github.com/mitchellh/mapstructure"
 	"io"
 	"log"
 	"net/http"
@@ -135,148 +134,25 @@ func (web *Web) matchPlayWebsocketHandler(w http.ResponseWriter, r *http.Request
 		}
 
 		switch messageType {
-		case "loadMatch":
-			args := struct {
-				MatchId int
-			}{}
-			err = mapstructure.Decode(data, &args)
-			if err != nil {
+		case "loadMatch", "showResult", "substituteTeams":
+			if err := web.executeMatchPlayLifecycleCommand(messageType, data, false); err != nil {
 				writeWebsocketError(ws, err.Error())
-				continue
-			}
-			err = web.arena.ResetMatch()
-			if err != nil {
-				writeWebsocketError(ws, err.Error())
-				continue
-			}
-			if args.MatchId == 0 {
-				err = web.arena.LoadTestMatch()
-			} else {
-				match, err := web.arena.Database.GetMatchById(args.MatchId)
-				if err != nil {
-					writeWebsocketError(ws, err.Error())
-					continue
-				}
-				if match == nil {
-					writeWebsocketError(ws, fmt.Sprintf("invalid match ID %d", args.MatchId))
-					continue
-				}
-				err = web.arena.LoadMatch(match)
-			}
-			if err != nil {
-				writeWebsocketError(ws, err.Error())
-				continue
-			}
-		case "showResult":
-			args := struct {
-				MatchId int
-			}{}
-			err = mapstructure.Decode(data, &args)
-			if err != nil {
-				writeWebsocketError(ws, err.Error())
-				continue
-			}
-			if args.MatchId == 0 {
-				// Load an empty match to effectively clear the buffer.
-				web.arena.SavedMatch = &model.Match{}
-				web.arena.SavedMatchResult = model.NewMatchResult()
-				web.arena.ScorePostedNotifier.Notify()
-				continue
-			}
-			match, err := web.arena.Database.GetMatchById(args.MatchId)
-			if err != nil {
-				writeWebsocketError(ws, err.Error())
-				continue
-			}
-			if match == nil {
-				writeWebsocketError(ws, fmt.Sprintf("invalid match ID %d", args.MatchId))
-				continue
-			}
-			matchResult, err := web.arena.Database.GetMatchResultForMatch(match.Id)
-			if err != nil {
-				writeWebsocketError(ws, err.Error())
-				continue
-			}
-			if matchResult == nil {
-				writeWebsocketError(ws, fmt.Sprintf("No result found for match ID %d.", args.MatchId))
-				continue
-			}
-			if match.ShouldUpdateRankings() {
-				web.arena.SavedRankings, err = web.arena.Database.GetAllRankings()
-				if err != nil {
-					writeWebsocketError(ws, err.Error())
-					continue
-				}
-			} else {
-				web.arena.SavedRankings = game.Rankings{}
-			}
-			web.arena.SavedMatch = match
-			web.arena.SavedMatchResult = matchResult
-			web.arena.ScorePostedNotifier.Notify()
-		case "substituteTeams":
-			args := struct {
-				Red1  int
-				Red2  int
-				Red3  int
-				Blue1 int
-				Blue2 int
-				Blue3 int
-			}{}
-			err = mapstructure.Decode(data, &args)
-			if err != nil {
-				writeWebsocketError(ws, err.Error())
-				continue
-			}
-			err = web.arena.SubstituteTeams(args.Red1, args.Red2, args.Red3, args.Blue1, args.Blue2, args.Blue3)
-			if err != nil {
-				writeWebsocketError(ws, err.Error())
-				continue
 			}
 		case "toggleBypass":
 			if err := web.executeMatchPlayControlCommand(messageType, data); err != nil {
 				writeWebsocketError(ws, err.Error())
 			}
-		case "startMatch":
-			args := struct {
-				MuteMatchSounds bool
-			}{}
-			err = mapstructure.Decode(data, &args)
-			if err != nil {
+		case "startMatch", "abortMatch":
+			if err := web.executeMatchPlayLifecycleCommand(messageType, data, false); err != nil {
 				writeWebsocketError(ws, err.Error())
-				continue
-			}
-			web.arena.MuteMatchSounds = args.MuteMatchSounds
-			err = web.arena.StartMatch()
-			if err != nil {
-				writeWebsocketError(ws, err.Error())
-				continue
-			}
-		case "abortMatch":
-			err = web.arena.AbortMatch()
-			if err != nil {
-				writeWebsocketError(ws, err.Error())
-				continue
 			}
 		case "signalVolunteers", "signalReset":
 			if err := web.executeMatchPlayControlCommand(messageType, data); err != nil {
 				writeWebsocketError(ws, err.Error())
 			}
-		case "commitAndPost":
-			err = web.commitPostAndLoadNextMatch()
-			if err != nil {
+		case "commitAndPost", "discardResults":
+			if err := web.executeMatchPlayLifecycleCommand(messageType, data, false); err != nil {
 				writeWebsocketError(ws, err.Error())
-				continue
-			}
-		case "discardResults":
-			err = web.arena.ResetMatch()
-			if err != nil {
-				writeWebsocketError(ws, err.Error())
-				continue
-			}
-			err = web.arena.LoadNextMatch(false)
-			if err != nil {
-				writeWebsocketError(ws, err.Error())
-				continue
 			}
 		case "setAudienceDisplay", "setAllianceStationDisplay", "startTimeout", "setTimeoutDisplay", "setTestMatchName":
 			if err := web.executeMatchPlayControlCommand(messageType, data); err != nil {

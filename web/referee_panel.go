@@ -120,11 +120,7 @@ func (web *Web) refereePanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 				// Don't allow committing the fouls until the match is over.
 				continue
 			}
-			web.arena.RedRealtimeScore.FoulsCommitted = true
-			web.arena.BlueRealtimeScore.FoulsCommitted = true
-			web.arena.ScoringStatusNotifier.Notify()
-
-			err = web.commitPostAndLoadNextMatch()
+			err = web.executeMatchPlayLifecycleCommand(messageType, data, true)
 			if err != nil {
 				writeWebsocketError(ws, err.Error())
 				continue
